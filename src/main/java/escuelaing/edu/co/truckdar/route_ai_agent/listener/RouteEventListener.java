@@ -10,6 +10,7 @@ import escuelaing.edu.co.truckdar.route_ai_agent.service.AzureOpenAiAlertInterpr
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +31,7 @@ public class RouteEventListener {
         this(objectMapper, routeAgentService, kafkaTemplate, null);
     }
 
+    @Autowired
     public RouteEventListener(ObjectMapper objectMapper, IRouteAgentService routeAgentService,
                               KafkaTemplate<String, Object> kafkaTemplate,
                               AzureOpenAiAlertInterpreterService alertInterpreter) {
