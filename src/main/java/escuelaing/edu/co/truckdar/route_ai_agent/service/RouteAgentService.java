@@ -117,7 +117,8 @@ public class RouteAgentService implements IRouteAgentService {
     private List<AlertSummaryDto> fetchActiveAlertsFromCommunityAlerts() {
         try {
             return restClient.get()
-                    .uri(alertsServiceUrl + "/api/v1/alerts/active")
+                    // Community-Alerts expone las alertas activas en GET /api/v1/alerts.
+                    .uri(alertsServiceUrl + "/api/v1/alerts")
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<AlertSummaryDto>>() {});
         } catch (Exception e) {

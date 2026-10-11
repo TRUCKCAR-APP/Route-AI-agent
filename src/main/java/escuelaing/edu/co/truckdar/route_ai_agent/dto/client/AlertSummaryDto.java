@@ -1,5 +1,6 @@
 package escuelaing.edu.co.truckdar.route_ai_agent.dto.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AlertSummaryDto {
     private Long id;
     private String alertType;
