@@ -21,9 +21,19 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: route-ai-agent-group
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+truckdar:
+  kafka:
+    topic:
+      route-events: truckdar.events.route-requests
+      road-alerts: truckdar.events.road-alerts
+      restrictions: truckdar.events.road-restrictions
+      route-decisions: truckdar.events.route-plans
 
 app:
   services:
@@ -31,3 +41,9 @@ app:
       url: http://localhost:8082
     routing-restrictions:
       url: http://localhost:8084
+
+azure:
+  openai:
+    endpoint: ${AZURE_OPENAI_ENDPOINT:https://attack-simulation-fdsi.openai.azure.com/}
+    api-key: ${AZURE_OPENAI_KEY:}
+    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}

@@ -3,8 +3,10 @@ package escuelaing.edu.co.truckdar.route_ai_agent.service;
 import escuelaing.edu.co.truckdar.route_ai_agent.dto.client.AlertSummaryDto;
 import escuelaing.edu.co.truckdar.route_ai_agent.dto.client.RouteCompatibilityDto;
 import escuelaing.edu.co.truckdar.route_ai_agent.dto.event.RoutePlanGeneratedEvent;
+import escuelaing.edu.co.truckdar.route_ai_agent.dto.event.EventEnvelope;
 import escuelaing.edu.co.truckdar.route_ai_agent.dto.request.PlanRouteRequest;
 import escuelaing.edu.co.truckdar.route_ai_agent.dto.response.RoutePlanResponse;
+import escuelaing.edu.co.truckdar.route_ai_agent.exception.RoutePlanningException;
 import escuelaing.edu.co.truckdar.route_ai_agent.model.RouteDecisionLog;
 import escuelaing.edu.co.truckdar.route_ai_agent.repository.RouteDecisionLogRepository;
 import escuelaing.edu.co.truckdar.route_ai_agent.service.agent.RouteOptimizationAgent;
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,8 +48,7 @@ public class RouteAgentService implements IRouteAgentService {
     @Override
     @Transactional
     public RoutePlanResponse planOptimalRoute(PlanRouteRequest request) {
-        String testCorridor = "Bogotá - Ibagué - Armenia";
-        RouteCompatibilityDto compatibility = validateCompatibilityWithRestrictionsService(request, testCorridor);
+        RouteCompatibilityDto compatibility = validateCompatibilityWithRestrictionsService(request, request.getOriginCity() + " - " + request.getDestinationCity());
         List<AlertSummaryDto> alerts = fetchActiveAlertsFromCommunityAlerts();
 
         RoutePlanResponse plan = agent.synthesizeOptimalRoute(request, alerts, compatibility);
@@ -106,15 +109,8 @@ public class RouteAgentService implements IRouteAgentService {
                     .retrieve()
                     .body(RouteCompatibilityDto.class);
         } catch (Exception e) {
-            log.warn("No se pudo conectar con ms-routing-restrictions ({}): aplicando validacion heuristica de respaldo", restrictionsServiceUrl);
-            boolean passable = req.getHeightMeters() <= 4.40;
-            return RouteCompatibilityDto.builder()
-                    .vehiclePlate(req.getVehiclePlate())
-                    .roadCorridor(corridor)
-                    .isPassable(passable)
-                    .blockingReasons(passable ? List.of() : List.of("Gálibo excedido en túneles principales (> 4.40m)"))
-                    .warnings(List.of("Validación generada en modo offline por el agente"))
-                    .build();
+            log.error("No se pudo validar compatibilidad con ms-routing-restrictions en {}", restrictionsServiceUrl, e);
+            throw new RoutePlanningException("La validación de restricciones no está disponible; no se puede planificar la ruta", e);
         }
     }
 
@@ -125,14 +121,14 @@ public class RouteAgentService implements IRouteAgentService {
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<AlertSummaryDto>>() {});
         } catch (Exception e) {
-            log.warn("No se pudo conectar con ms-community-alerts: simulando alertas viales", e.getMessage());
-            return List.of();
+            log.error("No se pudo obtener alertas de ms-community-alerts en {}", alertsServiceUrl, e);
+            throw new RoutePlanningException("Las alertas viales no están disponibles; no se puede planificar la ruta", e);
         }
     }
 
     private void publishRoutePlanKafkaEvent(RouteDecisionLog logEntry) {
         try {
-            RoutePlanGeneratedEvent event = RoutePlanGeneratedEvent.builder()
+            RoutePlanGeneratedEvent payload = RoutePlanGeneratedEvent.builder()
                     .planId(logEntry.getId())
                     .vehiclePlate(logEntry.getVehiclePlate())
                     .originCity(logEntry.getOriginCity())
@@ -141,12 +137,23 @@ public class RouteAgentService implements IRouteAgentService {
                     .totalDistanceKm(logEntry.getTotalDistanceKm())
                     .durationHours(logEntry.getEstimatedDurationHours())
                     .riskLevel(logEntry.getRiskLevel().name())
-                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            EventEnvelope event = EventEnvelope.builder()
+                    .eventId(UUID.randomUUID())
+                    .eventType("route.plan.generated")
+                    .occurredAt(Instant.now())
+                    .correlationId(UUID.nameUUIDFromBytes(
+                            String.valueOf(logEntry.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                    .version(1)
+                    .producer("route-ai-agent")
+                    .payload(new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(payload))
                     .build();
 
             kafkaTemplate.send(routePlansTopic, logEntry.getVehiclePlate(), event);
-        } catch (Throwable t) {
-            log.warn("No se pudo emitir evento de plan de ruta a Kafka: {}", t.getMessage());
+        } catch (RuntimeException e) {
+            log.error("No se pudo emitir evento de plan de ruta a Kafka", e);
+            throw e;
         }
     }
 }
