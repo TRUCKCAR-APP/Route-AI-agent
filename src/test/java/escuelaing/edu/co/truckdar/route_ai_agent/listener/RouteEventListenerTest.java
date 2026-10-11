@@ -45,4 +45,30 @@ class RouteEventListenerTest {
         verify(kafkaTemplate).send(eq("truckdar.events.route-requests"), eq("route-42"), captor.capture());
         assertThat(captor.getValue().toString()).contains("route.replan.requested");
     }
+
+    @Test
+    void corridorsAreComparedAndPublishedInCanonicalUpperCase() throws Exception {
+        ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        KafkaTemplate<String, Object> kafkaTemplate = mock(KafkaTemplate.class);
+        RouteEventListener listener = new RouteEventListener(mapper, mock(IRouteAgentService.class), kafkaTemplate);
+        String message = mapper.writeValueAsString(mapper.createObjectNode()
+                .put("eventId", UUID.randomUUID().toString())
+                .put("eventType", "alert.validated")
+                .put("occurredAt", Instant.now().toString())
+                .put("correlationId", UUID.randomUUID().toString())
+                .put("version", 1)
+                .put("producer", "community-alerts")
+                .set("payload", mapper.createObjectNode()
+                        .put("alertId", 18)
+                        .put("roadCorridor", "Ibagué - Armenia")
+                        .put("activeRouteCorridor", "IBAGUE-ARMENIA")
+                        .put("severity", "CRITICA")));
+
+        listener.consume(message);
+
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(kafkaTemplate).send(eq("truckdar.events.route-requests"), eq("IBAGUE-ARMENIA"), captor.capture());
+        assertThat(captor.getValue().toString()).contains("affectedCorridor\":\"IBAGUE-ARMENIA");
+        assertThat(RouteEventListener.normalizeCorridor("  bogotá-cali ")).isEqualTo("BOGOTA-CALI");
+    }
 }

@@ -14,6 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.text.Normalizer;
+import java.util.Locale;
+
 @Slf4j
 @Component
 public class RouteEventListener {
@@ -112,7 +115,7 @@ public class RouteEventListener {
         String corridor = text(payload, "roadCorridor", "affectedCorridor");
         String activeRouteCorridor = text(payload, "activeRouteCorridor");
         boolean corridorMatches = corridor != null && activeRouteCorridor != null
-                && corridor.equalsIgnoreCase(activeRouteCorridor);
+                && normalizeCorridor(corridor).equals(normalizeCorridor(activeRouteCorridor));
 
         if (!activeRoute && !corridorMatches) {
             log.info("Alerta validada no afecta un trayecto activo; no se solicita replanteo: eventId='{}'",
@@ -127,8 +130,10 @@ public class RouteEventListener {
                 "Alerta validada afecta el trayecto activo");
     }
 
-    private void publishReplan(EventEnvelope event, String routeId, String corridor, String severity,
+    private void publishReplan(EventEnvelope event, String routeId, String rawCorridor, String severity,
                                String reason) {
+        // Azure puede devolver "Ibague-Armenia" y la alerta "IBAGUE-ARMENIA": se publica siempre la forma canónica.
+        String corridor = normalizeCorridor(rawCorridor);
         JsonNode payload = event.getPayload();
         RouteReplanRequestedEvent payloadEvent = RouteReplanRequestedEvent.builder()
                 .alertId(payload.path("alertId").isNumber() ? payload.path("alertId").asLong() : null)
@@ -148,6 +153,19 @@ public class RouteEventListener {
                 .build();
         kafkaTemplate.send(routeEventsTopic, routeId == null ? corridor : routeId, replanEvent);
         log.info("Replanteo solicitado por alerta validada en corredor '{}'", corridor);
+    }
+
+    /** Forma canónica de un corredor: sin tildes, sin espacios sobrantes y en mayúsculas. */
+    static String normalizeCorridor(String corridor) {
+        if (corridor == null) {
+            return null;
+        }
+        String withoutAccents = Normalizer.normalize(corridor, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutAccents.trim()
+                .replaceAll("\\s*-\\s*", "-")
+                .replaceAll("\\s+", " ")
+                .toUpperCase(Locale.ROOT);
     }
 
     private String text(JsonNode payload, String... fields) {
