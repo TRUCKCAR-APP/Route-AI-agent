@@ -55,6 +55,12 @@ public class RouteEventListener {
             }
 
             if ("route.replan.requested".equals(event.getEventType())) {
+                // Las solicitudes emitidas por alertas solo traen el corredor afectado, no los datos del vehículo.
+                if (!event.getPayload().hasNonNull("vehiclePlate")) {
+                    log.info("Replanteo por corredor '{}' registrado sin datos de vehículo; queda para consumidores aguas abajo: eventId='{}'",
+                            text(event.getPayload(), "affectedCorridor"), event.getEventId());
+                    return;
+                }
                 PlanRouteRequest request = objectMapper.treeToValue(event.getPayload(), PlanRouteRequest.class);
                 routeAgentService.planOptimalRoute(request);
             } else if ("alert.reported".equals(event.getEventType())) {
