@@ -6,9 +6,9 @@ spring:
     name: ms-route-ai-agent
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/truckdar_db
-    username: truckdar_admin
-    password: truckdar_password
+    url: jdbc:postgresql://localhost:5432/truckcar_db
+    username: truckcar_admin
+    password: truckcar_password
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -27,13 +27,13 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-truckdar:
+truckcar:
   kafka:
     topic:
-      route-events: truckdar.events.route-requests
-      road-alerts: truckdar.events.road-alerts
-      restrictions: truckdar.events.road-restrictions
-      route-decisions: truckdar.events.route-plans
+      route-events: truckcar.events.route-requests
+      road-alerts: truckcar.events.road-alerts
+      restrictions: truckcar.events.road-restrictions
+      route-decisions: truckcar.events.route-plans
 
 app:
   services:
