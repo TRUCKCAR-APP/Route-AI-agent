@@ -19,6 +19,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import io.micrometer.core.instrument.Metrics;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -116,8 +117,10 @@ public class AzureOpenAiAlertInterpreterService {
             throw new IllegalArgumentException("El texto de la alerta no puede estar vacío");
         }
         String sanitized = sanitize(alertText);
+        Metrics.counter("truckcar.ai.requests", "component", "alert-interpreter").increment();
         if (!isConfigured()) {
             log.debug("Azure OpenAI sin configurar: alerta interpretada por reglas");
+            countFallback("NotConfigured");
             return rules.interpret(sanitized, reportedCorridor);
         }
         try {
@@ -129,8 +132,14 @@ public class AzureOpenAiAlertInterpreterService {
         } catch (Exception e) {
             log.warn("Azure OpenAI no disponible ({}: {}); circuito {}: se usa la interpretación por reglas",
                     e.getClass().getSimpleName(), e.getMessage(), circuitBreaker.getState());
+            countFallback(e.getClass().getSimpleName());
             return rules.interpret(sanitized, reportedCorridor);
         }
+    }
+
+    /** truckcar_ai_fallback_total{component="alert-interpreter",reason}: alertas interpretadas por reglas en vez de Azure. */
+    private static void countFallback(String reason) {
+        Metrics.counter("truckcar.ai.fallback", "component", "alert-interpreter", "reason", reason).increment();
     }
 
     boolean isConfigured() {
