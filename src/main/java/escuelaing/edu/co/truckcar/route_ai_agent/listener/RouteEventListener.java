@@ -21,6 +21,9 @@ import java.util.Locale;
 @Component
 public class RouteEventListener {
 
+    /** Confianza mínima de la interpretación para replantear sin que la comunidad haya confirmado la alerta. */
+    static final double MIN_REPLAN_CONFIDENCE = 0.70;
+
     private final ObjectMapper objectMapper;
     private final IRouteAgentService routeAgentService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -93,19 +96,38 @@ public class RouteEventListener {
             return;
         }
         if (alertInterpreter == null) {
-            throw new IllegalStateException("El intérprete Azure OpenAI no está configurado");
+            throw new IllegalStateException("El intérprete de alertas no está configurado");
         }
+        JsonNode payload = event.getPayload();
+        // Nunca lanza por una falla de Azure: sin el modelo, la interpretación por reglas clasifica la alerta.
         AzureOpenAiAlertInterpreterService.AlertInterpretation interpretation =
-                alertInterpreter.interpret(freeText);
+                alertInterpreter.interpret(freeText, text(payload, "roadCorridor", "affectedCorridor"));
+        log.info("Alerta {} interpretada por {}: bloqueo={}, severidad={}, confianza={}", text(payload, "alertId"),
+                interpretation.source(), interpretation.isCorridorBlocked(), interpretation.severity(),
+                interpretation.confidenceScore());
         if (!interpretation.isCorridorBlocked()
                 || interpretation.affectedCorridor().isBlank()) {
             log.info("Alerta libre no bloquea un corredor; no se solicita replanteo: eventId='{}'",
                     event.getEventId());
             return;
         }
+        boolean confirmed = isConfirmedByCommunity(payload);
+        if (interpretation.confidenceScore() < MIN_REPLAN_CONFIDENCE && !confirmed) {
+            // Una alerta sin confirmar y con baja confianza no desvía rutas: si la comunidad la confirma,
+            // alert.validated solicita el replanteo.
+            log.info("Bloqueo con confianza {} < {} y sin confirmar; no se solicita replanteo: eventId='{}'",
+                    interpretation.confidenceScore(), MIN_REPLAN_CONFIDENCE, event.getEventId());
+            return;
+        }
         publishReplan(event, null, interpretation.affectedCorridor(), interpretation.severity(),
-                "Azure OpenAI detectó bloqueo del corredor (confianza "
-                        + interpretation.confidenceScore() + ")");
+                interpretation.source() + " detectó bloqueo del corredor (confianza "
+                        + interpretation.confidenceScore() + (confirmed ? ", confirmada por la comunidad" : "") + ")");
+    }
+
+    /** Confirmada si la validó la comunidad o si ya suma más de un reporte. */
+    private static boolean isConfirmedByCommunity(JsonNode payload) {
+        return "VALIDATED".equalsIgnoreCase(payload.path("eventAction").asText(""))
+                || payload.path("confirmationsCount").asInt(0) > 1;
     }
 
     private void evaluateValidatedAlert(EventEnvelope event) {

@@ -44,7 +44,40 @@ app:
 
 azure:
   openai:
-    # Sin valores por defecto: se inyectan solo por variables de entorno (nunca en el repositorio).
-    endpoint: ${AZURE_OPENAI_ENDPOINT}
-    api-key: ${AZURE_OPENAI_KEY}
+    # Solo por variables de entorno (nunca en el repositorio). Sin ellas las alertas se interpretan por reglas.
+    endpoint: ${AZURE_OPENAI_ENDPOINT:}
+    api-key: ${AZURE_OPENAI_KEY:}
     deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
+
+# Llamada a Azure OpenAI: Retry -> CircuitBreaker -> TimeLimiter. Si todo falla, RuleBasedAlertInterpreter.
+resilience4j:
+  timelimiter:
+    instances:
+      azureOpenAi:
+        timeout-duration: 4s
+        cancel-running-future: true
+  circuitbreaker:
+    instances:
+      azureOpenAi:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      azureOpenAi:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        ignore-exceptions:
+          # Circuito abierto: no tiene sentido reintentar. Respuesta mal formada: reintentar no la arregla.
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService$InvalidModelResponseException
