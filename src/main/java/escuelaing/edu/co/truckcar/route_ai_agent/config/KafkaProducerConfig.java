@@ -16,6 +16,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -70,10 +71,12 @@ public class KafkaProducerConfig {
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
-            ConsumerFactory<String, String> consumerFactory) {
+            ConsumerFactory<String, String> consumerFactory, DefaultErrorHandler kafkaErrorHandler) {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
+        // Reintentos con backoff y DLT (KafkaDeadLetterConfig): un evento que falla no bloquea la partición.
+        factory.setCommonErrorHandler(kafkaErrorHandler);
         return factory;
     }
 }
