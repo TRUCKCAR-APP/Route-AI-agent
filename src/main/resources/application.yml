@@ -91,6 +91,8 @@ resilience4j:
         exponential-backoff-multiplier: 2
         enable-randomized-wait: true
         randomized-wait-factor: 0.5
+        # 429 (cuota agotada), 401/403 (clave) y 400 no se reintentan: van directo al fallback por reglas.
+        retry-exception-predicate: escuelaing.edu.co.truckcar.route_ai_agent.service.TransientAzureFailure
         ignore-exceptions:
           # Circuito abierto: no tiene sentido reintentar. Respuesta mal formada: reintentar no la arregla.
           - io.github.resilience4j.circuitbreaker.CallNotPermittedException
