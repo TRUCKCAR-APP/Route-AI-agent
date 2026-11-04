@@ -3,8 +3,8 @@ package escuelaing.edu.co.truckcar.route_ai_agent.listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService;
-import escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService.AlertInterpretation;
+import escuelaing.edu.co.truckcar.route_ai_agent.service.AlertInterpreter;
+import escuelaing.edu.co.truckcar.route_ai_agent.service.AlertInterpretation;
 import escuelaing.edu.co.truckcar.route_ai_agent.service.IRouteAgentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,14 +26,14 @@ class RouteEventListenerReplanThresholdTest {
 
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private KafkaTemplate<String, Object> kafkaTemplate;
-    private AzureOpenAiAlertInterpreterService interpreter;
+    private AlertInterpreter interpreter;
     private RouteEventListener listener;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         kafkaTemplate = mock(KafkaTemplate.class);
-        interpreter = mock(AzureOpenAiAlertInterpreterService.class);
+        interpreter = mock(AlertInterpreter.class);
         listener = new RouteEventListener(mapper, mock(IRouteAgentService.class), kafkaTemplate, interpreter);
     }
 

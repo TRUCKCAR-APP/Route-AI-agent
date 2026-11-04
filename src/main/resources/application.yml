@@ -48,6 +48,14 @@ truckcar:
       road-alerts: truckcar.events.road-alerts
       restrictions: truckcar.events.road-restrictions
       route-decisions: truckcar.events.route-plans
+  ai:
+    # bedrock | azure | rules (config/AlertInterpreterConfig). azure por defecto: sin endpoint ni clave, reglas.
+    provider: ${TRUCKCAR_AI_PROVIDER:azure}
+    bedrock:
+      # Converse acepta el mismo formato para Nova, Claude o Llama (p. ej. anthropic.claude-3-haiku-20240307-v1:0).
+      model-id: ${TRUCKCAR_BEDROCK_MODEL_ID:amazon.nova-micro-v1:0}
+      # Credenciales: DefaultCredentialsProvider (LabRole del nodo en AWS Academy, IRSA o Pod Identity en EKS).
+      region: ${AWS_REGION:us-east-1}
 
 app:
   services:
@@ -63,16 +71,22 @@ azure:
     api-key: ${AZURE_OPENAI_KEY:}
     deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
 
-# Llamada a Azure OpenAI: Retry -> CircuitBreaker -> TimeLimiter. Si todo falla, RuleBasedAlertInterpreter.
+# Llamada al modelo (instancias azureOpenAi y bedrock): Retry -> CircuitBreaker -> TimeLimiter. Si todo falla,
+# RuleBasedAlertInterpreter.
 resilience4j:
   timelimiter:
-    instances:
-      azureOpenAi:
+    configs:
+      aiModel:
         timeout-duration: 4s
         cancel-running-future: true
-  circuitbreaker:
     instances:
       azureOpenAi:
+        base-config: aiModel
+      bedrock:
+        base-config: aiModel
+  circuitbreaker:
+    configs:
+      aiModel:
         sliding-window-type: COUNT_BASED
         sliding-window-size: 10
         minimum-number-of-calls: 4
@@ -82,21 +96,31 @@ resilience4j:
         wait-duration-in-open-state: 30s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
-  retry:
     instances:
       azureOpenAi:
+        base-config: aiModel
+      bedrock:
+        base-config: aiModel
+  retry:
+    configs:
+      aiModel:
         max-attempts: 3
         wait-duration: 500ms
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
         enable-randomized-wait: true
         randomized-wait-factor: 0.5
-        # 429 (cuota agotada), 401/403 (clave) y 400 no se reintentan: van directo al fallback por reglas.
-        retry-exception-predicate: escuelaing.edu.co.truckcar.route_ai_agent.service.TransientAzureFailure
+        # 429 o throttling (cuota agotada), 401/403, 400 y 404 no se reintentan: van directo al fallback por reglas.
+        retry-exception-predicate: escuelaing.edu.co.truckcar.route_ai_agent.service.TransientModelFailure
         ignore-exceptions:
           # Circuito abierto: no tiene sentido reintentar. Respuesta mal formada: reintentar no la arregla.
           - io.github.resilience4j.circuitbreaker.CallNotPermittedException
-          - escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService$InvalidModelResponseException
+          - escuelaing.edu.co.truckcar.route_ai_agent.service.ModelAlertInterpreter$InvalidModelResponseException
+    instances:
+      azureOpenAi:
+        base-config: aiModel
+      bedrock:
+        base-config: aiModel
 
 # ── Observabilidad ──────────────────────────────────────────────────────────────────────────────
 # /actuator/prometheus solo es accesible dentro de la red interna: el api-gateway no enruta /actuator/**.

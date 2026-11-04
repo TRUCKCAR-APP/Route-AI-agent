@@ -6,7 +6,8 @@ import escuelaing.edu.co.truckcar.route_ai_agent.dto.event.EventEnvelope;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.event.RouteReplanRequestedEvent;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.request.PlanRouteRequest;
 import escuelaing.edu.co.truckcar.route_ai_agent.service.IRouteAgentService;
-import escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService;
+import escuelaing.edu.co.truckcar.route_ai_agent.service.AlertInterpretation;
+import escuelaing.edu.co.truckcar.route_ai_agent.service.AlertInterpreter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -27,7 +28,7 @@ public class RouteEventListener {
     private final ObjectMapper objectMapper;
     private final IRouteAgentService routeAgentService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final AzureOpenAiAlertInterpreterService alertInterpreter;
+    private final AlertInterpreter alertInterpreter;
 
     @Value("${truckcar.kafka.topic.route-events:truckcar.events.route-requests}")
     private String routeEventsTopic = "truckcar.events.route-requests";
@@ -40,7 +41,7 @@ public class RouteEventListener {
     @Autowired
     public RouteEventListener(ObjectMapper objectMapper, IRouteAgentService routeAgentService,
                               KafkaTemplate<String, Object> kafkaTemplate,
-                              AzureOpenAiAlertInterpreterService alertInterpreter) {
+                              AlertInterpreter alertInterpreter) {
         this.objectMapper = objectMapper;
         this.routeAgentService = routeAgentService;
         this.kafkaTemplate = kafkaTemplate;
@@ -99,8 +100,8 @@ public class RouteEventListener {
             throw new IllegalStateException("El intérprete de alertas no está configurado");
         }
         JsonNode payload = event.getPayload();
-        // Nunca lanza por una falla de Azure: sin el modelo, la interpretación por reglas clasifica la alerta.
-        AzureOpenAiAlertInterpreterService.AlertInterpretation interpretation =
+        // Nunca lanza por una falla del modelo: sin él, la interpretación por reglas clasifica la alerta.
+        AlertInterpretation interpretation =
                 alertInterpreter.interpret(freeText, text(payload, "roadCorridor", "affectedCorridor"));
         log.info("Alerta {} interpretada por {}: bloqueo={}, severidad={}, confianza={}", text(payload, "alertId"),
                 interpretation.source(), interpretation.isCorridorBlocked(), interpretation.severity(),

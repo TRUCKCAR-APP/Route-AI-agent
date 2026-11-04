@@ -1,6 +1,5 @@
 package escuelaing.edu.co.truckcar.route_ai_agent.service;
 
-import escuelaing.edu.co.truckcar.route_ai_agent.service.AzureOpenAiAlertInterpreterService.AlertInterpretation;
 import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
@@ -9,14 +8,15 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * Interpretación determinista de una alerta comunitaria por palabras clave. Es el fallback de Azure OpenAI: sin
- * credenciales, con el circuito abierto, ante un 429 o un timeout la alerta se clasifica igual y no se pierde.
+ * Interpretación determinista de una alerta comunitaria por palabras clave. Es el fallback de los modelos (Azure OpenAI,
+ * Amazon Bedrock): sin credenciales, con el circuito abierto, ante un 429 o un timeout la alerta se clasifica igual y no
+ * se pierde. Con TRUCKCAR_AI_PROVIDER=rules es el intérprete único.
  * <p>
  * La confianza es deliberadamente menor que el umbral de replanteo (0.70): una sola alerta interpretada por reglas no
  * desvía rutas; lo hace cuando la comunidad la confirma (alert.validated).
  */
 @Component
-public class RuleBasedAlertInterpreter {
+public class RuleBasedAlertInterpreter implements AlertInterpreter {
 
     public static final String SOURCE = "RULES";
 
@@ -36,6 +36,7 @@ public class RuleBasedAlertInterpreter {
     private static final double MEDIUM_CONFIDENCE = 0.4;
     private static final double UNKNOWN_CONFIDENCE = 0.2;
 
+    @Override
     public AlertInterpretation interpret(String alertText, String reportedCorridor) {
         String text = normalize(alertText);
         String corridor = reportedCorridor == null ? "" : reportedCorridor.trim();
