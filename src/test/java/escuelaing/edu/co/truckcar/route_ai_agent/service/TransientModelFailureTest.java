@@ -5,6 +5,11 @@ import com.azure.core.http.HttpResponse;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.bedrockruntime.model.AccessDeniedException;
+import software.amazon.awssdk.services.bedrockruntime.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceUnavailableException;
+import software.amazon.awssdk.services.bedrockruntime.model.ThrottlingException;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
@@ -17,10 +22,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** Una cuota agotada (429) o una clave inválida no se reintentan: el fallback por reglas responde sin esperar. */
-class TransientAzureFailureTest {
+/** Una cuota agotada (429, throttling) o una clave o permiso inválido no se reintentan: las reglas responden sin esperar. */
+class TransientModelFailureTest {
 
-    private final TransientAzureFailure transientFailure = new TransientAzureFailure();
+    private final TransientModelFailure transientFailure = new TransientModelFailure();
 
     private static HttpResponseException http(int status) {
         HttpResponse response = mock(HttpResponse.class);
@@ -29,7 +34,7 @@ class TransientAzureFailureTest {
     }
 
     @Test
-    void quotaAuthAndBadRequestsAreNotRetried() {
+    void azureQuotaAuthAndBadRequestsAreNotRetried() {
         assertThat(transientFailure.test(http(429))).isFalse();
         assertThat(transientFailure.test(http(401))).isFalse();
         assertThat(transientFailure.test(http(403))).isFalse();
@@ -39,12 +44,31 @@ class TransientAzureFailureTest {
     }
 
     @Test
-    void serverErrorsTimeoutsAndNetworkFailuresAreRetried() {
+    void azureServerErrorsTimeoutsAndNetworkFailuresAreRetried() {
         assertThat(transientFailure.test(http(503))).isTrue();
         assertThat(transientFailure.test(http(500))).isTrue();
         assertThat(transientFailure.test(http(408))).isTrue();
         assertThat(transientFailure.test(new TimeoutException())).isTrue();
         assertThat(transientFailure.test(new java.net.ConnectException("sin red"))).isTrue();
+    }
+
+    @Test
+    void bedrockThrottlingPermissionsAndMissingModelAreNotRetried() {
+        assertThat(transientFailure.test(ThrottlingException.builder().statusCode(429).message("cuota").build()))
+                .isFalse();
+        assertThat(transientFailure.test(AccessDeniedException.builder().statusCode(403).message("LabRole").build()))
+                .isFalse();
+        assertThat(transientFailure.test(ResourceNotFoundException.builder().statusCode(404).message("modelo").build()))
+                .isFalse();
+        assertThat(transientFailure.test(new ExecutionException(
+                ThrottlingException.builder().statusCode(429).message("cuota").build()))).isFalse();
+    }
+
+    @Test
+    void bedrockOutagesAndClientFailuresAreRetried() {
+        assertThat(transientFailure.test(ServiceUnavailableException.builder().statusCode(503).message("caída").build()))
+                .isTrue();
+        assertThat(transientFailure.test(SdkClientException.create("sin red"))).isTrue();
     }
 
     @Test
