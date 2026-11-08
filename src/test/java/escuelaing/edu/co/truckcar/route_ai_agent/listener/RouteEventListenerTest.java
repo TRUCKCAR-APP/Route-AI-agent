@@ -71,4 +71,38 @@ class RouteEventListenerTest {
         assertThat(captor.getValue().toString()).contains("affectedCorridor\":\"IBAGUE-ARMENIA");
         assertThat(RouteEventListener.normalizeCorridor("  bogotá-cali ")).isEqualTo("BOGOTA-CALI");
     }
+
+    @Test
+    void freeTextAlertReported_interpretsAndPublishesReplanWithAlertTypeAndVoiceText() throws Exception {
+        ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        KafkaTemplate<String, Object> kafkaTemplate = mock(KafkaTemplate.class);
+        escuelaing.edu.co.truckcar.route_ai_agent.service.RuleBasedAlertInterpreter rules =
+                new escuelaing.edu.co.truckcar.route_ai_agent.service.RuleBasedAlertInterpreter();
+        RouteEventListener listener = new RouteEventListener(mapper, mock(IRouteAgentService.class), kafkaTemplate, rules);
+
+        String message = mapper.writeValueAsString(mapper.createObjectNode()
+                .put("eventId", UUID.randomUUID().toString())
+                .put("eventType", "alert.reported")
+                .put("occurredAt", Instant.now().toString())
+                .put("correlationId", UUID.randomUUID().toString())
+                .put("version", 1)
+                .put("producer", "community-alerts")
+                .set("payload", mapper.createObjectNode()
+                        .put("alertId", 99)
+                        .put("text", "Derrumbe en el km 40 de La Línea, vía completamente cerrada")
+                        .put("roadCorridor", "IBAGUE-ARMENIA")
+                        .put("confirmationsCount", 3))); // confirmada por comunidad
+
+        listener.consume(message);
+
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(kafkaTemplate).send(eq("truckcar.events.route-requests"), eq("IBAGUE-ARMENIA"), captor.capture());
+        String eventJson = mapper.writeValueAsString(captor.getValue());
+
+        assertThat(eventJson)
+                .contains("route.replan.requested")
+                .contains("\"alertType\":\"DERRUMBE\"")
+                .contains("\"affectedCorridor\":\"IBAGUE-ARMENIA\"")
+                .contains("\"voiceText\"");
+    }
 }

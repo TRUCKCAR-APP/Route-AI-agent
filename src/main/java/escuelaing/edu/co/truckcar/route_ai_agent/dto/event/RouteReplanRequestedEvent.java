@@ -24,6 +24,8 @@ public class RouteReplanRequestedEvent {
     private String alertType;
     private String title;
     private String description;
+    /** Texto conciso para lectura por voz (TTS) dirigido al conductor. */
+    private String voiceText;
     /** Confianza del modelo (0 a 1); null si el replanteo viene de la confirmación de la comunidad. */
     private Double confidence;
     /** AZURE_OPENAI, BEDROCK, RULES o COMMUNITY. */

@@ -55,3 +55,23 @@ environment:
 # .env (desarrollo local)
 TRUCKCAR_AI_PROVIDER=rules
 ```
+
+## Validación en Vivo con Bedrock (Estado y Procedimiento)
+
+* **Estado Actual:** La suite de pruebas verifica al 100% el comportamiento de `BedrockAlertInterpreter` bajo condiciones normales y de fallo (429 Quota Exceeded, 503 Service Unavailable, timeout de 4s y formato JSON inválido), activando el fallback a reglas de forma garantizada.
+* **Prueba en Vivo Pendiente:** La ejecución de llamadas reales a la API Converse de Bedrock requiere que la sesión de AWS Academy Learner Lab esté activa en la consola web para renovar el `aws_session_token` temporal.
+* **Instrucciones para la Corrida Real con Credenciales Activas:**
+  1. En la consola de AWS Academy, hacer clic en **AWS Details** -> **Show AWS CLI credentials**.
+  2. Pegar las credenciales en `~/.aws/credentials` o exportar las variables de entorno:
+     ```powershell
+     $env:AWS_ACCESS_KEY_ID="ASI..."
+     $env:AWS_SECRET_ACCESS_KEY="..."
+     $env:AWS_SESSION_TOKEN="..."
+     $env:AWS_REGION="us-east-1"
+     ```
+  3. Ejecutar la prueba con el proveedor en modo Bedrock:
+     ```powershell
+     $env:TRUCKCAR_AI_PROVIDER="bedrock"
+     .\mvnw.cmd test -Dtest=BedrockAlertInterpreterTest
+     ```
+  4. Comparar el resultado del modelo (ej. `confidenceScore: 0.95`, `source: BEDROCK`) contra la salida determinista de `RuleBasedAlertInterpreter` (`confidenceScore: 0.60`, `source: RULES`). Ambos devuelven la misma estructura `AlertInterpretation` con `alertType`, `severity`, `affectedCorridor` y `voiceText`.
