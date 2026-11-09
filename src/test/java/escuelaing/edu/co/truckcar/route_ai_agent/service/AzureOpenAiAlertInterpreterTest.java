@@ -26,7 +26,7 @@ class AzureOpenAiAlertInterpreterTest {
         return new AzureOpenAiAlertInterpreter(new ObjectMapper(), rules, circuitBreakers,
                 RetryRegistry.of(RetryConfig.custom().maxAttempts(1).build()),
                 TimeLimiterRegistry.of(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(4)).build()),
-                endpoint, key, "gpt-4o-mini");
+                endpoint, key, "gpt-4.1-mini");
     }
 
     @Test

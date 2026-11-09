@@ -69,7 +69,9 @@ azure:
     # Solo por variables de entorno (nunca en el repositorio). Sin ellas las alertas se interpretan por reglas.
     endpoint: ${AZURE_OPENAI_ENDPOINT:}
     api-key: ${AZURE_OPENAI_KEY:}
-    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
+    # gpt-4.1-mini: gpt-4o-mini (2024-07-18) ya no se puede desplegar en Azure (retirado el 31-03-2026). Acepta los
+    # mismos parámetros (temperature, max_tokens, respuesta JSON); los modelos de razonamiento (o3, o4, gpt-5) no.
+    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4.1-mini}
 
 # Llamada al modelo (instancias azureOpenAi y bedrock): Retry -> CircuitBreaker -> TimeLimiter. Si todo falla,
 # RuleBasedAlertInterpreter.
