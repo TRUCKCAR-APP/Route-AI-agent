@@ -15,4 +15,17 @@ public class RouteReplanRequestedEvent {
     private String affectedCorridor;
     private String severity;
     private String reason;
+    /**
+     * Dónde está el bloqueo, qué dice la alerta y quién lo detectó. La PWA del conductor usa la posición para saber si
+     * el bloqueo cae sobre lo que le falta de ruta (las alertas del teléfono no traen corredor con nombre).
+     */
+    private Double latitude;
+    private Double longitude;
+    private String alertType;
+    private String title;
+    private String description;
+    /** Confianza del modelo (0 a 1); null si el replanteo viene de la confirmación de la comunidad. */
+    private Double confidence;
+    /** AZURE_OPENAI, BEDROCK, RULES o COMMUNITY. */
+    private String source;
 }
