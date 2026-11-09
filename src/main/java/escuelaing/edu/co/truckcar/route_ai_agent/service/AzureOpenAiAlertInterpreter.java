@@ -44,7 +44,7 @@ public class AzureOpenAiAlertInterpreter extends ModelAlertInterpreter {
             TimeLimiterRegistry timeLimiterRegistry,
             @Value("${azure.openai.endpoint:}") String endpoint,
             @Value("${azure.openai.api-key:}") String apiKey,
-            @Value("${azure.openai.deployment-name:gpt-4o-mini}") String deploymentName) {
+            @Value("${azure.openai.deployment-name:gpt-4.1-mini}") String deploymentName) {
         super(objectMapper, rules, circuitBreakerRegistry, retryRegistry, timeLimiterRegistry, RESILIENCE_INSTANCE, "azure");
         this.endpoint = endpoint;
         this.apiKey = apiKey;
