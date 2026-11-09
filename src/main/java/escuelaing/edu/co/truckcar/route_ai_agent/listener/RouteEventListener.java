@@ -106,8 +106,9 @@ public class RouteEventListener {
         log.info("Alerta {} interpretada por {}: bloqueo={}, severidad={}, confianza={}", text(payload, "alertId"),
                 interpretation.source(), interpretation.isCorridorBlocked(), interpretation.severity(),
                 interpretation.confidenceScore());
+        // Sin corredor con nombre basta la posición: la PWA cruza el punto con la geometría de cada ruta activa.
         if (!interpretation.isCorridorBlocked()
-                || interpretation.affectedCorridor().isBlank()) {
+                || (interpretation.affectedCorridor().isBlank() && !hasPosition(payload))) {
             log.info("Alerta libre no bloquea un corredor; no se solicita replanteo: eventId='{}'",
                     event.getEventId());
             return;
@@ -122,7 +123,8 @@ public class RouteEventListener {
         }
         publishReplan(event, null, interpretation.affectedCorridor(), interpretation.severity(),
                 interpretation.source() + " detectó bloqueo del corredor (confianza "
-                        + interpretation.confidenceScore() + (confirmed ? ", confirmada por la comunidad" : "") + ")");
+                        + interpretation.confidenceScore() + (confirmed ? ", confirmada por la comunidad" : "") + ")",
+                interpretation.confidenceScore(), interpretation.source());
     }
 
     /** Confirmada si la validó la comunidad o si ya suma más de un reporte. */
@@ -145,16 +147,16 @@ public class RouteEventListener {
                     event.getEventId());
             return;
         }
-        if (corridor == null || corridor.isBlank()) {
-            throw new IllegalArgumentException("alert.validated requiere corredor afectado");
+        if ((corridor == null || corridor.isBlank()) && !hasPosition(payload)) {
+            throw new IllegalArgumentException("alert.validated requiere corredor afectado o la posición de la alerta");
         }
 
         publishReplan(event, routeId, corridor, text(payload, "severity"),
-                "Alerta validada afecta el trayecto activo");
+                "Alerta validada afecta el trayecto activo", null, "COMMUNITY");
     }
 
     private void publishReplan(EventEnvelope event, String routeId, String rawCorridor, String severity,
-                               String reason) {
+                               String reason, Double confidence, String source) {
         // Azure puede devolver "Ibague-Armenia" y la alerta "IBAGUE-ARMENIA": se publica siempre la forma canónica.
         String corridor = normalizeCorridor(rawCorridor);
         JsonNode payload = event.getPayload();
@@ -164,6 +166,13 @@ public class RouteEventListener {
                 .affectedCorridor(corridor)
                 .severity(severity)
                 .reason(reason)
+                .latitude(number(payload, "latitude"))
+                .longitude(number(payload, "longitude"))
+                .alertType(text(payload, "alertType"))
+                .title(text(payload, "title"))
+                .description(text(payload, "description", "text"))
+                .confidence(confidence)
+                .source(source)
                 .build();
         EventEnvelope replanEvent = EventEnvelope.builder()
                 .eventId(java.util.UUID.randomUUID())
@@ -174,8 +183,20 @@ public class RouteEventListener {
                 .producer("route-ai-agent")
                 .payload(objectMapper.valueToTree(payloadEvent))
                 .build();
-        kafkaTemplate.send(routeEventsTopic, routeId == null ? corridor : routeId, replanEvent);
-        log.info("Replanteo solicitado por alerta validada en corredor '{}'", corridor);
+        String key = routeId != null ? routeId : corridor != null && !corridor.isBlank() ? corridor
+                : "alert-" + payloadEvent.getAlertId();
+        kafkaTemplate.send(routeEventsTopic, key, replanEvent);
+        log.info("Replanteo solicitado por alerta en corredor '{}' ({}, {})", corridor,
+                payloadEvent.getLatitude(), payloadEvent.getLongitude());
+    }
+
+    private static boolean hasPosition(JsonNode payload) {
+        return payload.path("latitude").isNumber() && payload.path("longitude").isNumber();
+    }
+
+    private static Double number(JsonNode payload, String field) {
+        JsonNode value = payload.get(field);
+        return value != null && value.isNumber() ? value.asDouble() : null;
     }
 
     /** Forma canónica de un corredor: sin tildes, sin espacios sobrantes y en mayúsculas. */
