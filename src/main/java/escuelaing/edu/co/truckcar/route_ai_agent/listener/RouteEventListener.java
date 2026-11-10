@@ -172,10 +172,10 @@ public class RouteEventListener {
                 .reason(reason)
                 .latitude(number(payload, "latitude"))
                 .longitude(number(payload, "longitude"))
-                .alertType(alertType)
+                .alertType(alertType != null ? alertType : text(payload, "alertType"))
                 .title(text(payload, "title"))
                 .description(text(payload, "description", "text"))
-                .voiceText(voiceText)
+                .voiceText(voiceText != null ? voiceText : text(payload, "voiceText", "ttsMessage"))
                 .confidence(confidence)
                 .source(source)
                 .build();
