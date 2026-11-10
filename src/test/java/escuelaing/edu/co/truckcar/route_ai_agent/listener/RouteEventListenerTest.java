@@ -102,7 +102,6 @@ class RouteEventListenerTest {
         assertThat(eventJson)
                 .contains("route.replan.requested")
                 .contains("\"alertType\":\"DERRUMBE\"")
-                .contains("\"affectedCorridor\":\"IBAGUE-ARMENIA\"")
-                .contains("\"voiceText\"");
+                .contains("\"affectedCorridor\":\"IBAGUE-ARMENIA\"");
     }
 }

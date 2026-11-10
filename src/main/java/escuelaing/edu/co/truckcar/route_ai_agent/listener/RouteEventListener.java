@@ -124,7 +124,7 @@ public class RouteEventListener {
         publishReplan(event, null, interpretation.affectedCorridor(), interpretation.severity(),
                 interpretation.source() + " detectó bloqueo del corredor (confianza "
                         + interpretation.confidenceScore() + (confirmed ? ", confirmada por la comunidad" : "") + ")",
-                interpretation.alertType(), interpretation.voiceText(),
+                interpretation.alertType(),
                 interpretation.confidenceScore(), interpretation.source());
     }
 
@@ -153,13 +153,12 @@ public class RouteEventListener {
         }
 
         String alertType = text(payload, "alertType", "type");
-        String voiceText = text(payload, "voiceText", "ttsMessage");
         publishReplan(event, routeId, corridor, text(payload, "severity"),
-                "Alerta validada afecta el trayecto activo", alertType, voiceText, null, "COMMUNITY");
+                "Alerta validada afecta el trayecto activo", alertType, null, "COMMUNITY");
     }
 
     private void publishReplan(EventEnvelope event, String routeId, String rawCorridor, String severity,
-                               String reason, String alertType, String voiceText,
+                               String reason, String alertType,
                                Double confidence, String source) {
         // Azure puede devolver "Ibague-Armenia" y la alerta "IBAGUE-ARMENIA": se publica siempre la forma canónica.
         String corridor = normalizeCorridor(rawCorridor);
@@ -175,7 +174,6 @@ public class RouteEventListener {
                 .alertType(alertType != null ? alertType : text(payload, "alertType"))
                 .title(text(payload, "title"))
                 .description(text(payload, "description", "text"))
-                .voiceText(voiceText != null ? voiceText : text(payload, "voiceText", "ttsMessage"))
                 .confidence(confidence)
                 .source(source)
                 .build();
