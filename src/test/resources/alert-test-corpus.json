@@ -1,0 +1,152 @@
+[
+  {
+    "text": "Derrumbe en el km 40 de La Línea, vía completamente cerrada",
+    "expectedType": "DERRUMBE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "deslizamiento de tierra en el Alto de Minas, no hay paso",
+    "expectedType": "DERRUMBE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "Avalancha bajó sobre la vía Bogotá-Medellín en el sector de Cisneros",
+    "expectedType": "DERRUMBE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "derrumve en la subida a La Linea, cuidado parceros",
+    "expectedType": "OTRO",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Cierre total del puente en Rumichaca, desvíen por la vía alterna",
+    "expectedType": "CIERRE",
+    "expectedSeverity": "CRITICAL",
+    "expectedBlocked": true
+  },
+  {
+    "text": "Via cerrada por protesta de campesinos en la troncal de Occidente",
+    "expectedType": "CIERRE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "El paso está cerrado desde las 6am, busquen otro camino",
+    "expectedType": "CIERRE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "Accidente grave con un tractomula volcado en la curva del diablo, Bogotá-Medellín",
+    "expectedType": "ACCIDENTE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": false
+  },
+  {
+    "text": "acidente en el km 80 de la via al Llano, un carro se salio",
+    "expectedType": "OTRO",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Choque entre dos camiones frente a la báscula de Villeta, cuidado",
+    "expectedType": "ACCIDENTE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Volcamiento de un camión cargado de café en la curva del Boquerón, Ibagué-Armenia",
+    "expectedType": "ACCIDENTE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Retén de policía en la entrada de Rumichaca, están revisando todos los carros",
+    "expectedType": "RETEN",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Pelo'as de policía parando tractomulas en el peaje de La Línea",
+    "expectedType": "RETEN",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Control de tránsito en el alto de Minas, tengan los papeles listos",
+    "expectedType": "RETEN",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Báscula de peso activa en el bypass de Girardot, verifiquen el tonelaje antes de salir",
+    "expectedType": "BASCULA",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Bascula en la via panamericana cerca de Pasto, están pesando todo",
+    "expectedType": "BASCULA",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Trancón de varios kilómetros en la vía Bogotá-Medellín por la obra del túnel",
+    "expectedType": "TRAFICO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Congestión severa subiendo a La Línea, calculen tiempo extra parceros",
+    "expectedType": "TRAFICO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Via lenta entre el peaje de Villeta y Honda por la lluvia de esta mañana",
+    "expectedType": "TRAFICO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Trancon brutal en el Alto de Minas, llevo 2 horas parado",
+    "expectedType": "TRAFICO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Paso a un carril por obra en la doble calzada Bogotá-Sogamoso",
+    "expectedType": "OTRO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Niebla espesa en el páramo de Letras, manejen con cuidado",
+    "expectedType": "OTRO",
+    "expectedSeverity": "MEDIUM",
+    "expectedBlocked": false
+  },
+  {
+    "text": "Todo bien por la vía al Llano, libre hasta el peaje",
+    "expectedType": "OTRO",
+    "expectedSeverity": "LOW",
+    "expectedBlocked": false
+  },
+  {
+    "text": "VÍA CERRADA POR DERRUMBE en el km 40 subiendo a La Línea, favor avisar",
+    "expectedType": "DERRUMBE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": true
+  },
+  {
+    "text": "Colisión entre un bus y un camión en la entrada de Bogotá por la autopista Norte",
+    "expectedType": "ACCIDENTE",
+    "expectedSeverity": "HIGH",
+    "expectedBlocked": false
+  }
+]

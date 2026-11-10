@@ -23,13 +23,28 @@ public class RuleBasedAlertInterpreter implements AlertInterpreter {
     /** Bloqueo del corredor: la vía no es transitable. */
     private static final List<Pattern> BLOCKING = patterns(
             "derrumbe", "deslizamiento", "avalancha", "via cerrada", "cierre total", "carretera cerrada",
-            "paso cerrado", "bloqueo", "bloqueada", "bloqueado", "puente caido", "colapso", "inundada", "intransitable");
+            "paso cerrado", "bloqueo", "bloqueada", "bloqueado", "puente caido", "colapso", "inundada", "intransitable",
+            "cerrado", "cerrada", "cierre", "no hay paso");
     /** Riesgo alto sin bloqueo confirmado. */
     private static final List<Pattern> HIGH = patterns(
-            "accidente", "volcamiento", "incendio", "inundacion", "manifestacion", "paro", "protesta", "hundimiento");
+            "accidente", "choque", "volcamiento", "colision", "incendio", "inundacion", "manifestacion", "paro", "protesta", "hundimiento");
     /** Afectaciones menores del tránsito. */
     private static final List<Pattern> MEDIUM = patterns(
-            "paso a un carril", "un carril", "obra", "trancon", "congestion", "neblina", "lluvia", "via lenta");
+            "paso a un carril", "un carril", "obra", "trancon", "congestion", "neblina", "niebla", "lluvia", "via lenta");
+
+    // ── Tipos de alerta ──────────────────────────────────────────────────────
+    private static final List<Pattern> TYPE_DERRUMBE = patterns(
+            "derrumbe", "deslizamiento", "avalancha", "tierra en la via");
+    private static final List<Pattern> TYPE_CIERRE = patterns(
+            "cierre", "cerrado", "cerrada", "bloqueado", "bloqueada", "bloqueo", "no hay paso", "via cerrada");
+    private static final List<Pattern> TYPE_ACCIDENTE = patterns(
+            "accidente", "choque", "volcamiento", "colision");
+    private static final List<Pattern> TYPE_RETEN = patterns(
+            "reten", "control", "policia");
+    private static final List<Pattern> TYPE_BASCULA = patterns(
+            "bascula", "bascula de peso", "control de peso");
+    private static final List<Pattern> TYPE_TRAFICO = patterns(
+            "trancon", "trafico", "congestion", "lento", "lenta", "via lenta");
 
     private static final double BLOCKING_CONFIDENCE = 0.6;
     private static final double HIGH_CONFIDENCE = 0.5;
@@ -40,17 +55,58 @@ public class RuleBasedAlertInterpreter implements AlertInterpreter {
     public AlertInterpretation interpret(String alertText, String reportedCorridor) {
         String text = normalize(alertText);
         String corridor = reportedCorridor == null ? "" : reportedCorridor.trim();
+        String alertType = detectType(text);
         if (matchesAny(text, BLOCKING)) {
             boolean total = text.contains("cierre total") || text.contains("intransitable") || text.contains("puente caido");
-            return new AlertInterpretation(true, corridor, total ? "CRITICAL" : "HIGH", BLOCKING_CONFIDENCE, SOURCE);
+            String severity = total ? "CRITICAL" : "HIGH";
+            String voiceText = generateVoiceText(alertType, corridor, true, severity);
+            return new AlertInterpretation(true, corridor, severity, BLOCKING_CONFIDENCE, SOURCE, alertType, voiceText);
         }
         if (matchesAny(text, HIGH)) {
-            return new AlertInterpretation(false, corridor, "HIGH", HIGH_CONFIDENCE, SOURCE);
+            String voiceText = generateVoiceText(alertType, corridor, false, "HIGH");
+            return new AlertInterpretation(false, corridor, "HIGH", HIGH_CONFIDENCE, SOURCE, alertType, voiceText);
         }
         if (matchesAny(text, MEDIUM)) {
-            return new AlertInterpretation(false, corridor, "MEDIUM", MEDIUM_CONFIDENCE, SOURCE);
+            String voiceText = generateVoiceText(alertType, corridor, false, "MEDIUM");
+            return new AlertInterpretation(false, corridor, "MEDIUM", MEDIUM_CONFIDENCE, SOURCE, alertType, voiceText);
         }
-        return new AlertInterpretation(false, corridor, "LOW", UNKNOWN_CONFIDENCE, SOURCE);
+        String voiceText = generateVoiceText(alertType, corridor, false, "LOW");
+        return new AlertInterpretation(false, corridor, "LOW", UNKNOWN_CONFIDENCE, SOURCE, alertType, voiceText);
+    }
+
+    /**
+     * Genera un mensaje claro y conciso para sintetizador de voz (TTS) para el conductor.
+     */
+    public static String generateVoiceText(String alertType, String corridor, boolean blocked, String severity) {
+        String place = (corridor != null && !corridor.isBlank()) ? " en corredor " + corridor : "";
+        if (blocked) {
+            return switch (alertType) {
+                case "DERRUMBE" -> "Alerta crítica: derrumbe reportado" + place + ". Vía cerrada, busque rutas alternas.";
+                case "CIERRE" -> "Atención: vía cerrada" + place + ". Paso no habilitado.";
+                default -> "Atención: vía bloqueada" + place + ". Tránsito suspendido.";
+            };
+        }
+        return switch (alertType) {
+            case "ACCIDENTE" -> "Precaución: accidente reportado" + place + ". Reduzca la velocidad.";
+            case "TRAFICO" -> "Aviso de tráfico: congestión" + place + ". Se prevén demoras.";
+            case "RETEN" -> "Aviso en ruta: control de autoridades o retén" + place + ".";
+            case "BASCULA" -> "Aviso: control de báscula de pesaje" + place + ".";
+            default -> "Precaución en ruta: condiciones adversas reportadas" + place + ".";
+        };
+    }
+
+    /**
+     * Clasifica el tipo fino de la alerta a partir del texto ya normalizado.
+     * El orden importa: DERRUMBE prevalece sobre CIERRE cuando ambos aparecen.
+     */
+    private static String detectType(String normalizedText) {
+        if (matchesAny(normalizedText, TYPE_DERRUMBE)) return "DERRUMBE";
+        if (matchesAny(normalizedText, TYPE_ACCIDENTE)) return "ACCIDENTE";
+        if (matchesAny(normalizedText, TYPE_CIERRE))    return "CIERRE";
+        if (matchesAny(normalizedText, TYPE_BASCULA))   return "BASCULA";
+        if (matchesAny(normalizedText, TYPE_RETEN))     return "RETEN";
+        if (matchesAny(normalizedText, TYPE_TRAFICO))   return "TRAFICO";
+        return "OTRO";
     }
 
     /** Minúsculas y sin tildes: "Vía cerrada" y "via cerrada" son la misma regla. */
