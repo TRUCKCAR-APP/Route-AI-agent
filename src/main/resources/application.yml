@@ -48,6 +48,13 @@ truckcar:
       road-alerts: truckcar.events.road-alerts
       restrictions: truckcar.events.road-restrictions
       route-decisions: truckcar.events.route-plans
+  routing:
+    # HERE Routing v8 (perfil de camión) y Geocoding. La clave solo por variable de entorno, nunca en el repositorio.
+    here:
+      api-key: ${HERE_API_KEY:}
+      router-url: ${TRUCKCAR_HERE_ROUTER_URL:https://router.hereapi.com/v8}
+      geocode-url: ${TRUCKCAR_HERE_GEOCODE_URL:https://geocode.search.hereapi.com/v1}
+      alternatives: ${TRUCKCAR_HERE_ALTERNATIVES:2}
   ai:
     # bedrock | azure | rules (config/AlertInterpreterConfig). azure por defecto: sin endpoint ni clave, reglas.
     provider: ${TRUCKCAR_AI_PROVIDER:azure}

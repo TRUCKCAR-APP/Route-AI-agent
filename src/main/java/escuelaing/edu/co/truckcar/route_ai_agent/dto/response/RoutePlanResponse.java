@@ -26,6 +26,19 @@ public class RoutePlanResponse {
     private List<RouteLegResponse> segments;
     private List<String> warnings;
     private List<AlternativeRouteResponse> alternatives;
+    /** Texto armado con los datos reales de la ruta (proveedor, restricciones verificadas, peajes y alertas). */
     private String aiRecommendation;
     private LocalDateTime generatedAt;
+
+    /** Proveedor de la ruta (HERE, perfil de camión). */
+    private String provider;
+    /** Geometría de la ruta recomendada: [[latitud, longitud], ...], simplificada a 2000 puntos como máximo. */
+    private List<List<Double>> geometry;
+    /** Peajes en orden de paso, con la tarifa para el camión. */
+    private List<TollResponse> tolls;
+    private Integer tollsCount;
+    /** Suma de las tarifas de los peajes, en pesos colombianos. */
+    private Double tollCostCop;
+    /** false si Routing-Restrictions no respondió y las restricciones registradas no se pudieron verificar. */
+    private Boolean restrictionsVerified;
 }

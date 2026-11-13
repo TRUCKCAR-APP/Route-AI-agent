@@ -18,4 +18,7 @@ public class AlternativeRouteResponse {
     private Boolean isPassable;
     private String riskLevel;
     private List<String> issues;
+    private Double tollCostCop;
+    /** [[latitud, longitud], ...] simplificada a 500 puntos como máximo, para dibujarla en el mapa. */
+    private List<List<Double>> geometry;
 }
