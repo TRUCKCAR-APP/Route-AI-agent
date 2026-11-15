@@ -80,6 +80,9 @@ class HereRoutePlanningIntegrationTest {
                "sections":[{"summary":{"length":480000,"duration":39600},"polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y","tolls":[]}]},
               {"routeLabels":[{"name":{"value":"40"}}],
                "sections":[{"summary":{"length":498540,"duration":42069},"polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y",
+                 "actions":[{"action":"depart","duration":60,"length":200,"instruction":"Diríjase al sur por la Carrera 30.","offset":0},
+                            {"action":"turn","duration":90,"length":300,"instruction":"Gire a la derecha en la Calle 13.","offset":2,"direction":"right","severity":"quite"},
+                            {"action":"arrive","duration":0,"length":0,"instruction":"Ha llegado a su destino.","offset":3}],
                  "tolls":[{"tollSystem":"RUTA 40-COL","fares":[{"convertedPrice":{"currency":"COP","value":70700},
                            "price":{"currency":"COP","value":70700}}],
                            "tollCollectionLocations":[{"name":"Sibaté (Rural)","location":{"lat":50.1006,"lng":8.6915}}]}]}]}
@@ -196,6 +199,12 @@ class HereRoutePlanningIntegrationTest {
         assertThat(rejected.get("isPassable").asBoolean()).isFalse();
         assertThat(rejected.get("issues").get(0).asText()).contains("Gálibo de 4,20 m");
         assertThat(plan.get("aiRecommendation").asText()).contains("vía 40", "$70.700");
+        assertThat(plan.get("steps")).hasSize(3);
+        assertThat(plan.get("steps").get(1).get("instruction").asText()).isEqualTo("Gire a la derecha en la Calle 13.");
+        assertThat(plan.get("steps").get(1).get("latitude").asDouble()).isEqualTo(50.10063);
+        assertThat(plan.get("geometryGeoJson").get("type").asText()).isEqualTo("LineString");
+        assertThat(plan.get("geometryGeoJson").get("coordinates").get(0).get(0).asDouble()).isEqualTo(8.69821);
+        assertThat(hereQueries.get(0)).contains("return=summary,polyline,tolls,routeLabels,actions,instructions");
 
         // HERE recibió el perfil del camión y la clave; las ciudades se geocodificaron (Bogotá: 4.61496,-74.06941).
         assertThat(hereQueries.get(0)).contains("transportMode=truck", "origin=4.614960,-74.069410",

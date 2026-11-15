@@ -41,6 +41,11 @@ class HereLiveRoutingTest {
         assertThat(best.tolls()).isNotEmpty();
         assertThat(best.tolls().get(0).currency()).isEqualTo("COP");
         assertThat(best.tollCost()).isGreaterThan(0);
+        assertThat(best.steps()).hasSizeGreaterThan(5);
+        assertThat(best.steps().get(0).action()).isEqualTo("depart");
+        assertThat(best.steps().get(best.steps().size() - 1).action()).isEqualTo("arrive");
+        assertThat(best.steps()).anyMatch(s -> s.instruction().startsWith("Gire") || s.instruction().contains("salida"));
+        assertThat(best.steps()).allMatch(s -> s.geometryIndex() >= 0 && s.geometryIndex() < best.geometry().size());
     }
 
     @Test

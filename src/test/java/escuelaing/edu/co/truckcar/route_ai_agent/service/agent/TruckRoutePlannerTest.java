@@ -31,7 +31,11 @@ class TruckRoutePlannerTest {
             geometry.add(new double[]{4.60, -74.10 + i * 0.01});
         }
         List<HereRoute.Toll> tolls = List.of(new HereRoute.Toll("Peaje Chusacá", 4.60, -73.85, 70_700.0, "COP"));
-        return new HereRoute(labels, km * 1000, hours * 3600, geometry, tolls, violations);
+        List<HereRoute.Step> steps = List.of(
+                new HereRoute.Step("depart", "Diríjase al oeste por la Calle 13. Siga durante 27 km.", null, null, null, 27_000, 1_500, 0),
+                new HereRoute.Step("roundaboutExit", "Tome la 2.ª salida de la rotonda. Siga durante 28 km.", "right", "light", 2, 28_000, 1_600, 25),
+                new HereRoute.Step("arrive", "Ha llegado a su destino.", null, null, null, 0, 0, 50));
+        return new HereRoute(labels, km * 1000, hours * 3600, geometry, tolls, violations, steps);
     }
 
     private static EvaluatedRoute ok(HereRoute route) {
@@ -74,6 +78,29 @@ class TruckRoutePlannerTest {
         assertThat(alternative.getIsPassable()).isTrue();
         assertThat(alternative.getIssues()).contains("+12 km y +48 min frente a la recomendada");
         assertThat(alternative.getGeometry()).isNotEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void returnsTheTurnByTurnStepsAndTheGeometryAsGeoJson() {
+        RoutePlanResponse plan = planner.plan(request, mula, List.of(ok(route(List.of("40"), 55, 1, List.of()))), List.of());
+
+        assertThat(plan.getSteps()).hasSize(3);
+        var roundabout = plan.getSteps().get(1);
+        assertThat(roundabout.getAction()).isEqualTo("roundaboutExit");
+        assertThat(roundabout.getInstruction()).startsWith("Tome la 2.ª salida");
+        assertThat(roundabout.getExit()).isEqualTo(2);
+        assertThat(roundabout.getDirection()).isEqualTo("right");
+        assertThat(roundabout.getLatitude()).isEqualTo(4.6);
+        assertThat(roundabout.getLongitude()).isEqualTo(-73.85);
+        // A mitad de la geometría y escalado al largo que informó HERE (55 km).
+        assertThat(roundabout.getDistanceFromStartMeters()).isCloseTo(27_500, org.assertj.core.data.Offset.offset(100.0));
+        assertThat(plan.getSteps().get(2).getDistanceFromStartMeters()).isEqualTo(55_000);
+
+        assertThat(plan.getGeometryGeoJson()).containsEntry("type", "LineString");
+        List<List<Double>> coordinates = (List<List<Double>>) plan.getGeometryGeoJson().get("coordinates");
+        assertThat(coordinates).hasSize(51);
+        assertThat(coordinates.get(0)).containsExactly(-74.1, 4.6);
     }
 
     @Test

@@ -114,6 +114,28 @@ public final class GeoMath {
         return list;
     }
 
+    /** LineString GeoJSON (coordenadas [longitud, latitud], el orden de GeoJSON) con 5 decimales. */
+    public static java.util.Map<String, Object> toGeoJsonLineString(List<double[]> points) {
+        List<List<Double>> coordinates = new ArrayList<>(points.size());
+        for (double[] p : points) {
+            coordinates.add(List.of(round5(p[1]), round5(p[0])));
+        }
+        java.util.Map<String, Object> geoJson = new java.util.LinkedHashMap<>();
+        geoJson.put("type", "LineString");
+        geoJson.put("coordinates", coordinates);
+        return geoJson;
+    }
+
+    /** Distancia acumulada en metros desde el primer punto hasta cada punto de la polilínea. */
+    public static double[] cumulativeDistances(List<double[]> points) {
+        double[] cumulative = new double[points.size()];
+        for (int i = 1; i < points.size(); i++) {
+            cumulative[i] = cumulative[i - 1] + distance(points.get(i - 1)[0], points.get(i - 1)[1],
+                    points.get(i)[0], points.get(i)[1]);
+        }
+        return cumulative;
+    }
+
     private static double round5(double value) {
         return Math.round(value * 100_000d) / 100_000d;
     }

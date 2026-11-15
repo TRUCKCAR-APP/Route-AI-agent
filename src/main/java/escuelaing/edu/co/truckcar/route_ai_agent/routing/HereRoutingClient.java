@@ -70,7 +70,7 @@ public class HereRoutingClient {
                 .queryParam("transportMode", "truck")
                 .queryParam("origin", coordinate(origin))
                 .queryParam("destination", coordinate(destination))
-                .queryParam("return", "summary,polyline,tolls,routeLabels")
+                .queryParam("return", "summary,polyline,tolls,routeLabels,actions,instructions")
                 .queryParam("alternatives", properties.getAlternatives())
                 .queryParam("currency", "COP")
                 .queryParam("lang", "es-CO")
@@ -137,12 +137,28 @@ public class HereRoutingClient {
         List<double[]> geometry = new ArrayList<>();
         List<HereRoute.Toll> tolls = new ArrayList<>();
         List<String> violations = new ArrayList<>();
+        List<HereRoute.Step> steps = new ArrayList<>();
         for (JsonNode section : route.path("sections")) {
             length += section.path("summary").path("length").asDouble(0);
             duration += section.path("summary").path("duration").asDouble(0);
             List<double[]> points = FlexiblePolyline.decode(section.path("polyline").asText(""));
-            // Las secciones comparten el punto de unión: no se repite.
+            // Las secciones comparten el punto de unión: no se repite. El offset de una acción es el índice del punto
+            // dentro de su sección; en la geometría completa, la sección empieza en el último punto ya agregado.
+            int sectionStart = geometry.isEmpty() ? 0 : geometry.size() - 1;
             geometry.addAll(geometry.isEmpty() || points.isEmpty() ? points : points.subList(1, points.size()));
+            int lastIndex = Math.max(0, geometry.size() - 1);
+            for (JsonNode action : section.path("actions")) {
+                int index = Math.min(lastIndex, sectionStart + Math.max(0, action.path("offset").asInt(0)));
+                steps.add(new HereRoute.Step(
+                        action.path("action").asText("continue"),
+                        action.path("instruction").asText(""),
+                        textOrNull(action, "direction"),
+                        textOrNull(action, "severity"),
+                        action.path("exit").canConvertToInt() ? action.path("exit").asInt() : null,
+                        action.path("length").asDouble(0),
+                        action.path("duration").asDouble(0),
+                        index));
+            }
             for (JsonNode toll : section.path("tolls")) {
                 tolls.add(parseToll(toll));
             }
@@ -160,7 +176,12 @@ public class HereRoutingClient {
                 labels.add(name);
             }
         }
-        return new HereRoute(labels, length, duration, geometry, tolls, violations.stream().distinct().toList());
+        return new HereRoute(labels, length, duration, geometry, tolls, violations.stream().distinct().toList(), steps);
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+        String value = node.path(field).asText("");
+        return value.isBlank() ? null : value;
     }
 
     private static HereRoute.Toll parseToll(JsonNode toll) {

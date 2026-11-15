@@ -32,6 +32,10 @@ class HereRoutingClientTest {
               {"id":"r1","routeLabels":[{"name":{"value":"40","language":"es"}}],
                "sections":[{"type":"vehicle","summary":{"length":498540,"duration":42069},
                  "polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y",
+                 "actions":[
+                   {"action":"depart","duration":64,"length":239,"instruction":"Diríjase a Avenida Calle 19. Siga durante 239 m.","offset":0},
+                   {"action":"roundaboutExit","duration":286,"length":1473,"instruction":"Tome la 3.ª salida de la rotonda.","offset":2,"direction":"right","severity":"light","exit":3},
+                   {"action":"arrive","duration":0,"length":0,"instruction":"Ha llegado a su destino.","offset":3}],
                  "tolls":[{"countryCode":"COL","tollSystem":"RUTA 40-COL",
                    "fares":[{"price":{"type":"value","currency":"COP","value":70700},
                              "convertedPrice":{"type":"value","currency":"COP","value":70700}}],
@@ -95,7 +99,7 @@ class HereRoutingClientTest {
                 .contains("transportMode=truck", "origin=4.609700,-74.081700", "destination=3.880100,-77.031200",
                         "vehicle[height]=440", "vehicle[grossWeight]=52000", "vehicle[axleCount]=6",
                         "vehicle[weightPerAxle]=8667", "vehicle[type]=tractor", "vehicle[trailerCount]=1",
-                        "currency=COP", "return=summary,polyline,tolls,routeLabels", "alternatives=2");
+                        "currency=COP", "return=summary,polyline,tolls,routeLabels,actions,instructions", "alternatives=2");
         assertThat(routes).hasSize(2);
 
         HereRoute first = routes.get(0);
@@ -108,6 +112,35 @@ class HereRoutingClientTest {
         assertThat(first.violatesTruckRestrictions()).isFalse();
 
         assertThat(routes.get(1).violations()).containsExactly("Route violates vehicle restriction: height limit of 420 cm");
+
+        assertThat(first.steps()).extracting(HereRoute.Step::action).containsExactly("depart", "roundaboutExit", "arrive");
+        HereRoute.Step roundabout = first.steps().get(1);
+        assertThat(roundabout.instruction()).isEqualTo("Tome la 3.ª salida de la rotonda.");
+        assertThat(roundabout.exit()).isEqualTo(3);
+        assertThat(roundabout.direction()).isEqualTo("right");
+        assertThat(roundabout.severity()).isEqualTo("light");
+        assertThat(roundabout.lengthMeters()).isEqualTo(1_473);
+        assertThat(roundabout.geometryIndex()).isEqualTo(2);
+        assertThat(first.steps().get(0).direction()).isNull();
+        assertThat(routes.get(1).steps()).isEmpty();
+    }
+
+    @Test
+    void inARouteWithTwoSectionsTheStepsPointIntoTheWholeGeometry() {
+        // Dos secciones de 4 puntos que comparten el de unión: la geometría completa tiene 7.
+        body.set("""
+                {"routes":[{"sections":[
+                  {"summary":{"length":100,"duration":10},"polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y",
+                   "actions":[{"action":"depart","instruction":"Salga","offset":0},{"action":"turn","instruction":"Gire","offset":2}]},
+                  {"summary":{"length":100,"duration":10},"polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y",
+                   "actions":[{"action":"continue","instruction":"Siga","offset":1},{"action":"arrive","instruction":"Llegó","offset":3}]}
+                ]}]}
+                """);
+
+        HereRoute route = client().routes(new GeoPoint(4.6, -74.0), new GeoPoint(4.4, -75.2), mula()).get(0);
+
+        assertThat(route.geometry()).hasSize(7);
+        assertThat(route.steps()).extracting(HereRoute.Step::geometryIndex).containsExactly(0, 2, 4, 6);
     }
 
     @Test

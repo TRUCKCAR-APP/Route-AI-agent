@@ -5,6 +5,7 @@ import escuelaing.edu.co.truckcar.route_ai_agent.dto.request.PlanRouteRequest;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.AlternativeRouteResponse;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.RouteLegResponse;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.RoutePlanResponse;
+import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.RouteStepResponse;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.TollResponse;
 import escuelaing.edu.co.truckcar.route_ai_agent.model.RouteRiskLevel;
 import escuelaing.edu.co.truckcar.route_ai_agent.routing.GeoMath;
@@ -162,7 +163,41 @@ public class TruckRoutePlanner {
                 .tollsCount(tolls.size())
                 .tollCostCop(chosen.route().tollCost())
                 .restrictionsVerified(chosen.restrictionsVerified())
+                .geometryGeoJson(GeoMath.toGeoJsonLineString(geometry))
+                .steps(steps(chosen.route()))
                 .build();
+    }
+
+    /**
+     * Las maniobras de HERE con su punto exacto (de la geometría completa, no la simplificada) y la distancia desde el
+     * origen a lo largo de la ruta, escalada al largo que informó HERE.
+     */
+    private static List<RouteStepResponse> steps(HereRoute route) {
+        List<double[]> full = route.geometry();
+        if (route.steps().isEmpty() || full.isEmpty()) {
+            return List.of();
+        }
+        double[] cumulative = GeoMath.cumulativeDistances(full);
+        double measured = cumulative[cumulative.length - 1];
+        double scale = measured > 0 ? route.lengthMeters() / measured : 1;
+        List<RouteStepResponse> steps = new ArrayList<>(route.steps().size());
+        for (HereRoute.Step step : route.steps()) {
+            int index = Math.max(0, Math.min(full.size() - 1, step.geometryIndex()));
+            double[] point = full.get(index);
+            steps.add(RouteStepResponse.builder()
+                    .action(step.action())
+                    .instruction(step.instruction())
+                    .direction(step.direction())
+                    .severity(step.severity())
+                    .exit(step.exit())
+                    .latitude(Math.round(point[0] * 100_000d) / 100_000d)
+                    .longitude(Math.round(point[1] * 100_000d) / 100_000d)
+                    .distanceFromStartMeters((double) Math.round(cumulative[index] * scale))
+                    .distanceMeters(step.lengthMeters())
+                    .durationSeconds(step.durationSeconds())
+                    .build());
+        }
+        return steps;
     }
 
     private static List<AlertSummaryDto> alertsNear(List<AlertSummaryDto> alerts, List<double[]> geometry) {

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -41,4 +42,8 @@ public class RoutePlanResponse {
     private Double tollCostCop;
     /** false si Routing-Restrictions no respondió y las restricciones registradas no se pudieron verificar. */
     private Boolean restrictionsVerified;
+    /** La misma geometría como LineString GeoJSON: { "type": "LineString", "coordinates": [[longitud, latitud], ...] }. */
+    private Map<String, Object> geometryGeoJson;
+    /** Maniobras paso a paso de la ruta recomendada, en orden (de depart a arrive). */
+    private List<RouteStepResponse> steps;
 }
