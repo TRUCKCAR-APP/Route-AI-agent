@@ -124,6 +124,7 @@ public class RouteEventListener {
         publishReplan(event, null, interpretation.affectedCorridor(), interpretation.severity(),
                 interpretation.source() + " detectó bloqueo del corredor (confianza "
                         + interpretation.confidenceScore() + (confirmed ? ", confirmada por la comunidad" : "") + ")",
+                interpretation.alertType(),
                 interpretation.confidenceScore(), interpretation.source());
     }
 
@@ -151,12 +152,14 @@ public class RouteEventListener {
             throw new IllegalArgumentException("alert.validated requiere corredor afectado o la posición de la alerta");
         }
 
+        String alertType = text(payload, "alertType", "type");
         publishReplan(event, routeId, corridor, text(payload, "severity"),
-                "Alerta validada afecta el trayecto activo", null, "COMMUNITY");
+                "Alerta validada afecta el trayecto activo", alertType, null, "COMMUNITY");
     }
 
     private void publishReplan(EventEnvelope event, String routeId, String rawCorridor, String severity,
-                               String reason, Double confidence, String source) {
+                               String reason, String alertType,
+                               Double confidence, String source) {
         // Azure puede devolver "Ibague-Armenia" y la alerta "IBAGUE-ARMENIA": se publica siempre la forma canónica.
         String corridor = normalizeCorridor(rawCorridor);
         JsonNode payload = event.getPayload();
@@ -168,7 +171,7 @@ public class RouteEventListener {
                 .reason(reason)
                 .latitude(number(payload, "latitude"))
                 .longitude(number(payload, "longitude"))
-                .alertType(text(payload, "alertType"))
+                .alertType(alertType != null ? alertType : text(payload, "alertType"))
                 .title(text(payload, "title"))
                 .description(text(payload, "description", "text"))
                 .confidence(confidence)

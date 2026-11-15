@@ -170,12 +170,17 @@ public abstract class ModelAlertInterpreter implements AlertInterpreter {
             if (!result.has("isCorridorBlocked") || !result.get("isCorridorBlocked").isBoolean()) {
                 throw new IllegalArgumentException("isCorridorBlocked debe ser booleano");
             }
+            boolean blocked = result.get("isCorridorBlocked").booleanValue();
+            String corridor = requiredText(result, "affectedCorridor");
+            String voiceText = RuleBasedAlertInterpreter.generateVoiceText("OTRO", corridor, blocked, severity);
             return new AlertInterpretation(
-                    result.get("isCorridorBlocked").booleanValue(),
-                    requiredText(result, "affectedCorridor"),
+                    blocked,
+                    corridor,
                     severity,
                     confidence,
-                    source());
+                    source(),
+                    null,
+                    voiceText);
         } catch (Exception e) {
             throw new InvalidModelResponseException(provider() + " no devolvió el JSON de alerta esperado", e);
         }
