@@ -16,6 +16,11 @@ public class JacksonConfig {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // Lector tolerante: un campo nuevo en un evento (o en el payload de route.replan.requested) no lo manda a la DLQ.
+        mapper.disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        // Sin el mixin de Spring, las propiedades de un ProblemDetail (message, details...) saldrían en "properties".
+        mapper.addMixIn(org.springframework.http.ProblemDetail.class,
+                org.springframework.http.converter.json.ProblemDetailJacksonMixin.class);
         return mapper;
     }
 }
