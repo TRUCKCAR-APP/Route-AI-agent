@@ -35,4 +35,7 @@ public class PlanRouteRequest {
     private Double originLongitude;
     private Double destinationLatitude;
     private Double destinationLongitude;
+
+    /** Opcional: ejes del camión. Sin él se deducen de truckType (p. ej. TRACTOMULA_3S3 = 6). */
+    private Integer axleCount;
 }

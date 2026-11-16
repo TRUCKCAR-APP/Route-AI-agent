@@ -30,6 +30,18 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
+    /** HERE sin clave, con la clave rechazada o caído: 503, sin inventar una ruta de reemplazo. */
+    @ExceptionHandler(RoutingProviderUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleProviderUnavailable(RoutingProviderUnavailableException ex) {
+        log.warn("Proveedor de rutas no disponible: {}", ex.getMessage());
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now());
+        error.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        error.put("error", "Proveedor de rutas no disponible");
+        error.put("message", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @ExceptionHandler(RouteAccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(RouteAccessDeniedException ex) {
         HttpStatus status = ex.isUnauthenticated() ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
