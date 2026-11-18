@@ -30,12 +30,14 @@ public record TruckProfile(int heightCm, int grossWeightKg, Integer axleCount, I
     private static final java.util.Set<String> TRACTORS = java.util.Set.of("MINIMULA", "TRACTOMULA_3S3");
 
     public static TruckProfile from(PlanRouteRequest request) {
-        String type = request.getTruckType() == null ? "" : request.getTruckType().trim().toUpperCase(Locale.ROOT);
-        Integer axles = request.getAxleCount() != null && request.getAxleCount() > 0
-                ? request.getAxleCount()
-                : AXLES.get(type);
-        int heightCm = (int) Math.round(request.getHeightMeters() * 100);
-        int grossKg = (int) Math.round(request.getGrossWeightTons() * 1000);
+        return of(request.getTruckType(), request.getAxleCount(), request.getHeightMeters(), request.getGrossWeightTons());
+    }
+
+    public static TruckProfile of(String truckType, Integer axleCount, double heightMeters, double grossWeightTons) {
+        String type = truckType == null ? "" : truckType.trim().toUpperCase(Locale.ROOT);
+        Integer axles = axleCount != null && axleCount > 0 ? axleCount : AXLES.get(type);
+        int heightCm = (int) Math.round(heightMeters * 100);
+        int grossKg = (int) Math.round(grossWeightTons * 1000);
         Integer perAxle = axles == null ? null : (int) Math.round((double) grossKg / axles);
         return new TruckProfile(heightCm, grossKg, axles, perAxle, TRACTORS.contains(type));
     }

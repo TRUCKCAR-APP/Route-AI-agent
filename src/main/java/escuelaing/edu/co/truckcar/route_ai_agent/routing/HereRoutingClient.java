@@ -50,12 +50,22 @@ public class HereRoutingClient {
     public record GeoPoint(double latitude, double longitude) {
     }
 
+    /**
+     * Zona que la ruta debe evitar (HERE avoid[areas]): un cuadrado de lado 2 × radiusMeters centrado en el punto.
+     */
+    public record AvoidArea(double latitude, double longitude, double radiusMeters) {
+    }
+
     public List<HereRoute> routes(GeoPoint origin, GeoPoint destination, TruckProfile truck) {
+        return routes(origin, destination, truck, List.of());
+    }
+
+    public List<HereRoute> routes(GeoPoint origin, GeoPoint destination, TruckProfile truck, List<AvoidArea> avoid) {
         if (!properties.hasApiKey()) {
             throw new RoutingProviderUnavailableException(
                     "El planeador de rutas no tiene configurada la clave de HERE (HERE_API_KEY)");
         }
-        URI uri = buildUri(origin, destination, truck);
+        URI uri = buildUri(origin, destination, truck, avoid);
         JsonNode body = callWithOneRetry(uri);
         List<HereRoute> routes = new ArrayList<>();
         for (JsonNode route : body.path("routes")) {
@@ -66,6 +76,10 @@ public class HereRoutingClient {
     }
 
     URI buildUri(GeoPoint origin, GeoPoint destination, TruckProfile truck) {
+        return buildUri(origin, destination, truck, List.of());
+    }
+
+    URI buildUri(GeoPoint origin, GeoPoint destination, TruckProfile truck, List<AvoidArea> avoid) {
         UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(properties.getRouterUrl().replaceAll("/+$", "") + "/routes")
                 .queryParam("transportMode", "truck")
                 .queryParam("origin", coordinate(origin))
@@ -83,6 +97,9 @@ public class HereRoutingClient {
         if (truck.tractor()) {
             uri.queryParam("vehicle[type]", "tractor");
             uri.queryParam("vehicle[trailerCount]", 1);
+        }
+        if (avoid != null && !avoid.isEmpty()) {
+            uri.queryParam("avoid[areas]", avoid.stream().map(HereRoutingClient::bbox).collect(java.util.stream.Collectors.joining("|")));
         }
         uri.queryParam("apiKey", properties.getApiKey());
         return uri.encode().build().toUri();
@@ -177,6 +194,14 @@ public class HereRoutingClient {
             }
         }
         return new HereRoute(labels, length, duration, geometry, tolls, violations.stream().distinct().toList(), steps);
+    }
+
+    /** bbox:oeste,sur,este,norte con 5 decimales (≈1 m). */
+    static String bbox(AvoidArea area) {
+        double dLat = area.radiusMeters() / 111_320d;
+        double dLng = area.radiusMeters() / (111_320d * Math.max(0.01, Math.cos(Math.toRadians(area.latitude()))));
+        return String.format(Locale.ROOT, "bbox:%.5f,%.5f,%.5f,%.5f", area.longitude() - dLng, area.latitude() - dLat,
+                area.longitude() + dLng, area.latitude() + dLat);
     }
 
     private static String textOrNull(JsonNode node, String field) {

@@ -172,7 +172,8 @@ public class TruckRoutePlanner {
      * Las maniobras de HERE con su punto exacto (de la geometría completa, no la simplificada) y la distancia desde el
      * origen a lo largo de la ruta, escalada al largo que informó HERE.
      */
-    private static List<RouteStepResponse> steps(HereRoute route) {
+    /** Maniobras de una ruta de HERE con su punto y distancia desde el origen (también las usa el recálculo). */
+    public static List<RouteStepResponse> steps(HereRoute route) {
         List<double[]> full = route.geometry();
         if (route.steps().isEmpty() || full.isEmpty()) {
             return List.of();
