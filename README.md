@@ -8,6 +8,7 @@ Planeación de rutas para camión con HERE Routing v8 (altura, peso bruto, peso 
 |---|---|---|
 | `POST` | `/api/v1/routes/plan` | Plan del viaje antes de salir: geocodifica las ciudades, pide alternativas a HERE, las valida contra Routing-Restrictions y las alertas activas, elige la mejor y guarda el historial |
 | `POST` | `/api/v1/routes/reroute` | Recálculo durante el viaje (ver abajo) |
+| `GET` | `/api/v1/routes/places?q=&lat=&lng=&limit=` | Destinos por nombre para la navegación libre («¿A dónde va?» o «necesito ir a…» por voz): HERE Geocoding & Search v7 (`/discover`) cerca de la posición, dentro de Colombia y en español. Devuelve `id`, `title`, `address`, `category`, `latitude`, `longitude` (la entrada vehicular si HERE la conoce) y `distanceMeters`. 2 a 120 caracteres; hasta 8 resultados; sin clave, 503 |
 | `GET` | `/api/v1/routes/history/{plate}` | Historial de planes de una placa (solo `COORDINADOR` o `ADMIN`) |
 
 ### `POST /api/v1/routes/reroute`
