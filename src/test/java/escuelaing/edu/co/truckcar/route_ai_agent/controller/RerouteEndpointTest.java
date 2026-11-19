@@ -1,6 +1,8 @@
 package escuelaing.edu.co.truckcar.route_ai_agent.controller;
 
+import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.PlaceResponse;
 import escuelaing.edu.co.truckcar.route_ai_agent.dto.response.RerouteResponse;
+import escuelaing.edu.co.truckcar.route_ai_agent.routing.HerePlacesClient;
 import escuelaing.edu.co.truckcar.route_ai_agent.exception.GlobalExceptionHandler;
 import escuelaing.edu.co.truckcar.route_ai_agent.exception.RoutingProviderUnavailableException;
 import escuelaing.edu.co.truckcar.route_ai_agent.service.IRouteAgentService;
@@ -31,12 +33,13 @@ class RerouteEndpointTest {
             """;
 
     private final RerouteService reroute = mock(RerouteService.class);
+    private final HerePlacesClient places = mock(HerePlacesClient.class);
     private final MockMvc mvc;
 
     RerouteEndpointTest() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
-        mvc = MockMvcBuilders.standaloneSetup(new RouteAgentController(mock(IRouteAgentService.class), reroute))
+        mvc = MockMvcBuilders.standaloneSetup(new RouteAgentController(mock(IRouteAgentService.class), reroute, places))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .build();
@@ -62,6 +65,24 @@ class RerouteEndpointTest {
                         .content(BODY.replace("4.70", "120")))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(reroute);
+    }
+
+    @Test
+    void placesAreSearchedByNameNearThePosition() throws Exception {
+        when(places.search("universidad", 4.7, -74.05, 5)).thenReturn(List.of(
+                new PlaceResponse("p1", "Escuela Colombiana de Ingeniería", "AK 45 #205-59", "Universidad", 4.78, -74.04, 14230.0)));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/routes/places")
+                        .param("q", " universidad ").param("lat", "4.7").param("lng", "-74.05"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Escuela Colombiana de Ingeniería"))
+                .andExpect(jsonPath("$[0].category").value("Universidad"));
+    }
+
+    @Test
+    void aTooShortSearchIsABadRequest() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/routes/places").param("q", "a"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(places);
     }
 
     @Test

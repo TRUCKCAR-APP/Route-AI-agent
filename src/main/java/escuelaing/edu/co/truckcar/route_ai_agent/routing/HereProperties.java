@@ -18,6 +18,8 @@ public class HereProperties {
     private String apiKey = "";
     private String routerUrl = "https://router.hereapi.com/v8";
     private String geocodeUrl = "https://geocode.search.hereapi.com/v1";
+    /** HERE Geocoding & Search v7 (discover): lugares por nombre (empresas, universidades, direcciones). */
+    private String searchUrl = "https://discover.search.hereapi.com/v1";
     /** Rutas alternativas además de la principal (HERE admite hasta 6). */
     private int alternatives = 2;
     private int connectTimeoutMs = 3000;
