@@ -18,8 +18,22 @@ public record RerouteResponse(String provider, List<Option> routes) {
      * @param steps           maniobras en español
      * @param violations      restricciones del camión que la ruta no cumple; vacía si es apta
      * @param tollCost        suma de los peajes (COP si HERE lo convirtió); 0 sin peajes con tarifa
+     * @param tolls           peajes en orden de paso, con la tarifa de HERE para este camión (el Copiloto dice cuánto
+     *                        falta para el próximo y cuánto cuesta)
      */
     public record Option(double distanceMeters, double durationSeconds, List<double[]> geometry,
-                         List<RouteStepResponse> steps, List<String> violations, double tollCost) {
+                         List<RouteStepResponse> steps, List<String> violations, double tollCost, List<Toll> tolls) {
+
+        public Option(double distanceMeters, double durationSeconds, List<double[]> geometry,
+                      List<RouteStepResponse> steps, List<String> violations, double tollCost) {
+            this(distanceMeters, durationSeconds, geometry, steps, violations, tollCost, List.of());
+        }
+    }
+
+    /**
+     * @param cost     tarifa para la categoría del camión; null si HERE no la tiene
+     * @param currency moneda de la tarifa (COP en Colombia)
+     */
+    public record Toll(String name, Double latitude, Double longitude, Double cost, String currency) {
     }
 }
