@@ -33,6 +33,8 @@ class RerouteServiceTest {
                    "details":[{"type":"restriction","cause":"Route violates vehicle restriction: height limit of 380 cm"}]}]}]},
               {"id":"r2","sections":[{"type":"vehicle","summary":{"length":52000,"duration":3900},
                  "polyline":"BFoz5xJ67i1B1B7PzIhaxL7Y",
+                 "tolls":[{"tollSystem":"ANI","fares":[{"price":{"type":"value","currency":"COP","value":59900}}],
+                   "tollCollectionLocations":[{"name":"Peaje Andes","location":{"lat":4.82,"lng":-74.03}}]}],
                  "actions":[
                    {"action":"depart","duration":60,"length":200,"instruction":"Diríjase a Calle 80. Siga durante 200 m.","offset":0},
                    {"action":"turn","duration":120,"length":900,"instruction":"Gire a la derecha en Autopista Norte.","offset":2,"direction":"right","severity":"quite"},
@@ -106,6 +108,19 @@ class RerouteServiceTest {
         assertThat(first.steps().get(1).getInstruction()).isEqualTo("Gire a la derecha en Autopista Norte.");
         assertThat(first.steps().get(1).getDirection()).isEqualTo("right");
         assertThat(response.routes().get(1).violations()).singleElement().asString().contains("380");
+    }
+
+    @Test
+    void eachTollComesWithItsPositionAndTheFareForThisTruck() {
+        RerouteResponse.Option first = service.reroute(request(List.of())).routes().get(0);
+        assertThat(first.tolls()).singleElement().satisfies(toll -> {
+            assertThat(toll.name()).isEqualTo("Peaje Andes");
+            assertThat(toll.latitude()).isEqualTo(4.82);
+            assertThat(toll.longitude()).isEqualTo(-74.03);
+            assertThat(toll.cost()).isEqualTo(59_900);
+            assertThat(toll.currency()).isEqualTo("COP");
+        });
+        assertThat(first.tollCost()).isEqualTo(59_900);
     }
 
     @Test

@@ -42,7 +42,9 @@ public class RerouteService {
                 // Orden estable: las aptas para el camión primero, conservando el orden de HERE dentro de cada grupo.
                 .sorted(Comparator.comparing(HereRoute::violatesTruckRestrictions))
                 .map(route -> new RerouteResponse.Option(route.lengthMeters(), route.durationSeconds(), route.geometry(),
-                        TruckRoutePlanner.steps(route), route.violations(), route.tollCost()))
+                        TruckRoutePlanner.steps(route), route.violations(), route.tollCost(),
+                        route.tolls().stream().map(t -> new RerouteResponse.Toll(t.name(), t.latitude(), t.longitude(),
+                                t.cost(), t.currency())).toList()))
                 .toList();
         Metrics.counter("truckcar.routing.reroutes", "avoid", avoid.isEmpty() ? "no" : "yes").increment();
         return new RerouteResponse("HERE", options);
