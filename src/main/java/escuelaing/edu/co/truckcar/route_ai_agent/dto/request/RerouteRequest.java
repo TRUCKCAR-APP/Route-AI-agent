@@ -58,6 +58,23 @@ public class RerouteRequest {
     @Size(max = 10, message = "Como máximo 10 zonas a evitar")
     private List<AvoidPoint> avoid;
 
+    /** Paradas intermedias en orden (restaurante, estación, hotel…): la ruta pasa por ellas antes del destino. */
+    @Valid
+    @Size(max = 3, message = "Como máximo 3 paradas")
+    private List<Waypoint> via;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Waypoint {
+        @NotNull @DecimalMin("-90") @DecimalMax("90")
+        private Double latitude;
+
+        @NotNull @DecimalMin("-180") @DecimalMax("180")
+        private Double longitude;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor

@@ -23,6 +23,39 @@ public final class FlexiblePolyline {
     private FlexiblePolyline() {
     }
 
+    /**
+     * Codifica puntos [latitud, longitud] con precisión 5 (~1 m) y sin tercera dimensión: el corredor de la búsqueda de
+     * lugares a lo largo de la ruta (parámetro route de HERE Discover).
+     */
+    public static String encode(List<double[]> points) {
+        StringBuilder out = new StringBuilder();
+        appendUnsigned(out, 1);
+        appendUnsigned(out, 5);
+        long lastLat = 0;
+        long lastLng = 0;
+        for (double[] p : points) {
+            long lat = Math.round(p[0] * 100_000d);
+            long lng = Math.round(p[1] * 100_000d);
+            appendSigned(out, lat - lastLat);
+            appendSigned(out, lng - lastLng);
+            lastLat = lat;
+            lastLng = lng;
+        }
+        return out.toString();
+    }
+
+    private static void appendSigned(StringBuilder out, long value) {
+        appendUnsigned(out, value < 0 ? ~(value << 1) : value << 1);
+    }
+
+    private static void appendUnsigned(StringBuilder out, long value) {
+        while (value > 0x1F) {
+            out.append(ALPHABET.charAt((int) ((value & 0x1F) | 0x20)));
+            value >>>= 5;
+        }
+        out.append(ALPHABET.charAt((int) value));
+    }
+
     public static List<double[]> decode(String encoded) {
         if (encoded == null || encoded.isEmpty()) {
             return List.of();
