@@ -55,6 +55,11 @@ truckcar:
       router-url: ${TRUCKCAR_HERE_ROUTER_URL:https://router.hereapi.com/v8}
       geocode-url: ${TRUCKCAR_HERE_GEOCODE_URL:https://geocode.search.hereapi.com/v1}
       alternatives: ${TRUCKCAR_HERE_ALTERNATIVES:2}
+  places:
+    # Paradas sobre la ruta (POST /api/v1/routes/stops): OpenStreetMap complementa a HERE. Los servidores públicos de
+    # Overpass se saturan a menudo: se prueban en este orden y, si ninguno responde en ~6 s, se sigue solo con HERE.
+    overpass-urls: ${TRUCKCAR_OVERPASS_URLS:https://overpass-api.de/api/interpreter,https://maps.mail.ru/osm/tools/overpass/api/interpreter}
+    overpass-enabled: ${TRUCKCAR_OVERPASS_ENABLED:true}
   ai:
     # bedrock | azure | rules (config/AlertInterpreterConfig). azure por defecto: sin endpoint ni clave, reglas.
     provider: ${TRUCKCAR_AI_PROVIDER:azure}

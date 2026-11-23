@@ -18,6 +18,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Cliente de HERE Routing v8 con transportMode=truck: la ruta respeta la altura, el peso bruto, el peso por eje y los
@@ -61,11 +62,14 @@ public class HereRoutingClient {
     }
 
     public List<HereRoute> routes(GeoPoint origin, GeoPoint destination, TruckProfile truck, List<AvoidArea> avoid) {
-        if (!properties.hasApiKey()) {
-            throw new RoutingProviderUnavailableException(
-                    "El planeador de rutas no tiene configurada la clave de HERE (HERE_API_KEY)");
-        }
-        URI uri = buildUri(origin, destination, truck, avoid);
+        return routes(origin, List.of(), destination, truck, avoid);
+    }
+
+    /** Rutas con paradas intermedias (via) en orden: la geometría y los pasos cubren todos los tramos. */
+    public List<HereRoute> routes(GeoPoint origin, List<GeoPoint> via, GeoPoint destination, TruckProfile truck,
+                                  List<AvoidArea> avoid) {
+        requireKey();
+        URI uri = buildUri(origin, via, destination, truck, avoid, FULL_RETURN, properties.getAlternatives());
         JsonNode body = callWithOneRetry(uri);
         List<HereRoute> routes = new ArrayList<>();
         for (JsonNode route : body.path("routes")) {
@@ -80,12 +84,56 @@ public class HereRoutingClient {
     }
 
     URI buildUri(GeoPoint origin, GeoPoint destination, TruckProfile truck, List<AvoidArea> avoid) {
+        return buildUri(origin, List.of(), destination, truck, avoid, FULL_RETURN, properties.getAlternatives());
+    }
+
+    static final String FULL_RETURN = "summary,polyline,tolls,routeLabels,actions,instructions";
+
+    /**
+     * Viaje con paradas, solo con el resumen de cada tramo (sin geometría ni maniobras): sirve para medir el desvío de
+     * pasar por un lugar. Vacío si HERE no encuentra ruta para el camión.
+     */
+    public Optional<Trip> trip(GeoPoint origin, List<GeoPoint> via, GeoPoint destination, TruckProfile truck) {
+        requireKey();
+        JsonNode body = callWithOneRetry(buildUri(origin, via, destination, truck, List.of(), "summary", 0));
+        JsonNode route = body.path("routes").path(0);
+        if (route.isMissingNode()) {
+            return Optional.empty();
+        }
+        List<double[]> legs = new ArrayList<>();
+        for (JsonNode section : route.path("sections")) {
+            legs.add(new double[]{section.path("summary").path("length").asDouble(0),
+                    section.path("summary").path("duration").asDouble(0)});
+        }
+        HereRoute parsed = parseRoute(route);
+        return Optional.of(new Trip(parsed.lengthMeters(), parsed.durationSeconds(), legs, parsed.violatesTruckRestrictions()));
+    }
+
+    /**
+     * Resumen de un viaje: total, cada tramo [metros, segundos] (el primero llega a la primera parada) y si HERE marca
+     * alguna restricción del camión que no se pudo evitar.
+     */
+    public record Trip(double lengthMeters, double durationSeconds, List<double[]> legs, boolean violatesTruckRestrictions) {
+    }
+
+    private void requireKey() {
+        if (!properties.hasApiKey()) {
+            throw new RoutingProviderUnavailableException(
+                    "El planeador de rutas no tiene configurada la clave de HERE (HERE_API_KEY)");
+        }
+    }
+
+    URI buildUri(GeoPoint origin, List<GeoPoint> via, GeoPoint destination, TruckProfile truck, List<AvoidArea> avoid,
+                 String returnFields, int alternatives) {
         UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(properties.getRouterUrl().replaceAll("/+$", "") + "/routes")
                 .queryParam("transportMode", "truck")
-                .queryParam("origin", coordinate(origin))
-                .queryParam("destination", coordinate(destination))
-                .queryParam("return", "summary,polyline,tolls,routeLabels,actions,instructions")
-                .queryParam("alternatives", properties.getAlternatives())
+                .queryParam("origin", coordinate(origin));
+        for (GeoPoint stop : via == null ? List.<GeoPoint>of() : via) {
+            uri.queryParam("via", coordinate(stop));
+        }
+        uri.queryParam("destination", coordinate(destination))
+                .queryParam("return", returnFields)
+                .queryParam("alternatives", alternatives)
                 .queryParam("currency", "COP")
                 .queryParam("lang", "es-CO")
                 .queryParam("vehicle[height]", truck.heightCm())

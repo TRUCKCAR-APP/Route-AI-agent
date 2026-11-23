@@ -34,8 +34,10 @@ public class RerouteService {
                 .map(p -> new AvoidArea(p.getLatitude(), p.getLongitude(),
                         p.getRadiusMeters() == null ? DEFAULT_AVOID_RADIUS_M : p.getRadiusMeters()))
                 .toList();
+        List<GeoPoint> via = request.getVia() == null ? List.of() : request.getVia().stream()
+                .map(p -> new GeoPoint(p.getLatitude(), p.getLongitude())).toList();
         List<HereRoute> routes = hereRouting.routes(
-                new GeoPoint(request.getOriginLatitude(), request.getOriginLongitude()),
+                new GeoPoint(request.getOriginLatitude(), request.getOriginLongitude()), via,
                 new GeoPoint(request.getDestinationLatitude(), request.getDestinationLongitude()),
                 truck, avoid);
         List<RerouteResponse.Option> options = routes.stream()

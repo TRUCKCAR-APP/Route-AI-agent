@@ -31,6 +31,69 @@ public final class GeoMath {
         return best;
     }
 
+    /**
+     * Proyección de un punto sobre la polilínea: metros recorridos hasta el punto más cercano (alongMeters), distancia
+     * a la vía (offsetMeters) y si queda antes del inicio (behindStart: el punto más cercano es el primero y el lugar
+     * está del lado contrario al sentido de la ruta).
+     */
+    public record Projection(double alongMeters, double offsetMeters, boolean behindStart) {
+    }
+
+    public static Projection project(double lat, double lng, List<double[]> polyline, double[] cumulative) {
+        if (polyline == null || polyline.size() < 2) {
+            double d = polyline == null || polyline.isEmpty() ? Double.POSITIVE_INFINITY
+                    : distance(lat, lng, polyline.get(0)[0], polyline.get(0)[1]);
+            return new Projection(0, d, false);
+        }
+        double bestOffset = Double.POSITIVE_INFINITY;
+        double bestAlong = 0;
+        boolean behind = false;
+        double kx = METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(lat));
+        for (int i = 1; i < polyline.size(); i++) {
+            double[] a = polyline.get(i - 1);
+            double[] b = polyline.get(i);
+            double ax = (a[1] - lng) * kx;
+            double ay = (a[0] - lat) * METERS_PER_DEGREE_LAT;
+            double dx = (b[1] - a[1]) * kx;
+            double dy = (b[0] - a[0]) * METERS_PER_DEGREE_LAT;
+            double lengthSquared = dx * dx + dy * dy;
+            double raw = lengthSquared == 0 ? 0 : -(ax * dx + ay * dy) / lengthSquared;
+            double t = Math.max(0, Math.min(1, raw));
+            double px = ax + t * dx;
+            double py = ay + t * dy;
+            double offset = Math.sqrt(px * px + py * py);
+            if (offset < bestOffset) {
+                bestOffset = offset;
+                bestAlong = cumulative[i - 1] + t * Math.sqrt(lengthSquared);
+                behind = i == 1 && raw < 0;
+            }
+        }
+        return new Projection(bestAlong, bestOffset, behind);
+    }
+
+    /** Los primeros maxMeters de la polilínea (corta el último tramo en el punto exacto). */
+    public static List<double[]> head(List<double[]> points, double maxMeters) {
+        List<double[]> out = new ArrayList<>();
+        if (points == null || points.isEmpty()) {
+            return out;
+        }
+        out.add(points.get(0));
+        double done = 0;
+        for (int i = 1; i < points.size(); i++) {
+            double[] a = points.get(i - 1);
+            double[] b = points.get(i);
+            double step = distance(a[0], a[1], b[0], b[1]);
+            if (done + step >= maxMeters) {
+                double t = step == 0 ? 0 : (maxMeters - done) / step;
+                out.add(new double[]{a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t});
+                return out;
+            }
+            done += step;
+            out.add(b);
+        }
+        return out;
+    }
+
     public static double distance(double lat1, double lng1, double lat2, double lng2) {
         double kx = METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians((lat1 + lat2) / 2));
         double dx = (lng2 - lng1) * kx;
